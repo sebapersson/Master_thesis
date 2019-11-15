@@ -17,7 +17,21 @@ class param_schankenberg:
         self.b = b
         self.gamma = gamma
         self.d = d
-    
+
+# Class for constructing the initial conditions for each state (python syntax)
+class ic(UserExpression):
+    def __init__(self, *args, **kwargs):
+        self.u0_1 = kwargs.pop('u0_1')
+        self.u0_2 = kwargs.pop('u0_2')
+        self.sigma = kwargs.pop('sigma')
+        super(ic, self).__init__(*args, **kwargs)
+        
+    def eval(self,values,x):
+        values[0] = self.u0_1 + np.random.normal(scale = self.sigma)
+        values[1] = self.u0_2 + np.random.normal(scale = self.sigma)
+        
+    def value_shape(self):
+        return(2,)
 
 # ---------------------------------------------------------------------------------
 # Start of functions 
@@ -56,14 +70,13 @@ def solve_schnakenberg(param, t_end, n_time_step, mesh, folder_save):
     u = Function(V)
     u_n = Function(V)
     
-    # Expression for the initial values
-    u0_exp = Expression(('u0_1 + 0.1*sin(x[0]) + 0.1*sin(x[1])', 'u0_2 + 0.01'),
-                        u0_1=u0_1, u0_2=u0_2, element = element)
+    # The initial conditions
+    u0_exp = ic(u0_1 = u0_1, u0_2 = u0_2, sigma = 0.05, element = V.ufl_element())
     
     # Test and trial functions 
     v_1, v_2 = TestFunctions(V)
     u_1, u_2 = split(u)
-    u_n = interpolate(u0_exp, V)
+    u_n.interpolate(u0_exp)
     u_n1, u_n2 = split(u_n)
     
     # The weak form, backward Euler in time  
@@ -114,6 +127,9 @@ n_time_step = 150
 # Rectangular mesh 
 mesh = RectangleMesh(Point(0,0), Point(3, 3), 40, 40, "right/left")
 u = solve_schnakenberg(param, t_end, n_time_step, mesh, "reaction_system")
+u1, u2 = u.split()
+plot(u1)
+plt.show()
 
 # ---------------------------------------------------------------------------------
 # Circular mesh example 
