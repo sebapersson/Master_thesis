@@ -4,6 +4,7 @@ from fenics import *
 from mshr import *
 import numpy as np
 import matplotlib.pyplot as plt
+import meshio
 
 '''
 This file aims to solve the Schankenberg reaction diffusion system using the finite 
@@ -61,8 +62,8 @@ def solve_schnakenberg(param, t_end, n_time_step, mesh, folder_save):
     dt_inv = 1 / (t_end / n_time_step)
     dt = t_end / n_time_step
     
-    # Standard Lagrange elements 
-    P1 = FiniteElement('P', triangle, 1)
+    # Standard Lagrange elements
+    P1 = FiniteElement('P', mesh.ufl_cell(), 1)
     element = MixedElement([P1, P1])
     
     # Function space to approximate solution in 
@@ -126,10 +127,8 @@ n_time_step = 150
 
 # Rectangular mesh 
 mesh = RectangleMesh(Point(0,0), Point(3, 3), 40, 40, "right/left")
-u = solve_schnakenberg(param, t_end, n_time_step, mesh, "reaction_system")
-u1, u2 = u.split()
-plot(u1)
-plt.show()
+path_save = "System_holes/reaction_system"
+u = solve_schnakenberg(param, t_end, n_time_step, mesh, path_save)
 
 # ---------------------------------------------------------------------------------
 # Circular mesh example 
@@ -141,7 +140,8 @@ n_time_step = 150
 # Create a circular mesh 
 domain = Circle(Point(0, 0), 3)
 mesh = generate_mesh(domain, 50)
-u = solve_schnakenberg(param, t_end, n_time_step, mesh, "reaction_system_circle")
+path_save = "System_holes/reaction_system_circle"
+u = solve_schnakenberg(param, t_end, n_time_step, mesh, path_save)
 
 # ---------------------------------------------------------------------------------
 # Rectangle with holes example 
@@ -156,5 +156,5 @@ circle2 = Circle(Point(0.3, 0.4), 0.1)
 circle3 = Circle(Point(1, 1), 0.3)
 domain = box - (circle1 + circle2 + circle3)
 mesh = generate_mesh(domain, 50)
-u = solve_schnakenberg(param, t_end, n_time_step, mesh, "reaction_system_hole")
-
+path_save = "System_holes/reaction_system_hole"
+u = solve_schnakenberg(param, t_end, n_time_step, mesh, path_save)
