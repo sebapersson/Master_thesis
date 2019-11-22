@@ -75,7 +75,9 @@ def read_and_convert_mesh(path_to_msh_file, folder_save):
 #    v_1, v_2, the test functions
 #    u_n1, u_n2, trial functions for previous step
 #    dt_inv, the inverted time
-#    dx, the space measure 
+#    dx, the space measure
+# Returns:
+#    The variational formula for backward Euler 
 def formulate_FEM_equation(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx):
     dt_inv = Constant(dt_inv)
     a = Constant(param.a)
@@ -89,9 +91,130 @@ def formulate_FEM_equation(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx):
     
     return F
 
-# -----------------------------------------------------------------------------------
-# End of functions 
-# -----------------------------------------------------------------------------------
+# Function that will formulate the nonlinear system (F) for the Schankenberg model
+# with a specific dx-measure. This approaches uses the explicit Euler method when
+# stepping in time.
+# Args:
+#    param, a parameter class object
+#    u_1, u_2, the trial functions
+#    v_1, v_2, the test functions
+#    u_n1, u_n2, trial functions for previous step
+#    dt_inv, the inverted time
+#    dx, the space measure
+# Returns:
+#    The variational formula for forward Euler 
+def formulate_FEM_equation_forward_time(param, u_1, u_2, v_1, v_2, u_n1, u_n2,
+                                        dt_inv, dx):
+    
+    # Model parameters 
+    dt_inv = Constant(dt_inv)
+    a = Constant(param.a)
+    b = Constant(param.b)
+    d = Constant(param.d)
+    gamma = Constant(param.gamma)
+    
+    F = dt_inv*(u_1 - u_n1)*v_1*dx - gamma*(a - u_n1 + (u_n1**2)*u_n2)*v_1*dx \
+        + inner(grad(u_1), grad(v_1))*dx + dt_inv*(u_2 - u_n2)*v_2*dx \
+        - gamma*(b - (u_n1**2)*u_n2)*v_2*dx + d*inner(grad(u_2), grad(v_2))*dx
+    
+    return F
+
+
+# FEM-solver for the backward Euler method, note that currently 10-iterations are used
+# when solving the system of equations.
+# Args:
+#     V, the function space
+#     F, the variational formulation
+#     u, the test functions
+#     u_n, the previous step solution
+#     folder_save, the folder to save the result in
+#     dt, the step size
+#     n_time_step, the number of time steps used when solving the problem 
+# Returns:
+#     void 
+def solve_backward_euler(V, F, u, u_n, dt, folder_save, n_time_step):
+    
+    # Files for saving the end result
+    file1 = folder_save + "/u_1.pvd"
+    file2 = folder_save + "/u_2.pvd"
+    vtkfile_u_1 = File(file1)
+    vtkfile_u_2 = File(file2)
+    
+    # Solving the problem in time
+    t = 0
+    print("Starting to solve the PDE")
+    dU = Function(V)
+    for n in range(n_time_step):
+        if (n + 1) % 10 == 0:
+            print("Time step {} of {}".format(n+1, n_time_step))
+        
+        # Update time-step 
+        t += dt
+        
+        # Iterate 10-times when trying to solve the problem
+        # In the future look into explicit stepping 
+        for m in range(0, 10):
+            A = assemble(derivative(F, u), keep_diagonal = True) # Define the derivative
+            R = assemble(F) # Define the right hand side
+            A.ident_zeros() # Fix "zero"-rows to get consistent system
+            solve(A, dU.vector(), R) # Solver matrix system
+            u.assign(u - dU) # Update solution one step    
+        
+        # Save current time-step to file 
+        _u_1, _u_2, = u.split()
+        vtkfile_u_1 << (_u_1, t)
+        vtkfile_u_2 << (_u_2, t)
+        u_n.assign(u)
+
+
+# FEM-solver for the backward Euler method, note that currently 10-iterations are used
+# when solving the system of equations.
+# Args:
+#     F, the variational formulation
+#     u, the test functions
+#     u_n, the previous step solution
+#     folder_save, the folder to save the result in
+#     dt, the step size
+#     n_time_step, the number of time steps used when solving the problem 
+# Returns:
+#     void 
+def solve_forward_euler(V, F, u_n, folder_save, dt, n_time_step):
+    # Files for saving the end result
+    file1 = folder_save + "/u_1.pvd"
+    file2 = folder_save + "/u_2.pvd"
+    vtkfile_u_1 = File(file1)
+    vtkfile_u_2 = File(file2)
+    
+    # Solving the problem in time
+    t = 0
+    U = Function(V)
+    U.assign(u_n)
+    
+    # Solving a linear system, all non-linear into last-vector 
+    FA = lhs(F)
+    Fb = rhs(F)
+    A = assemble(FA, keep_diagonal = True)
+    A.ident_zeros()
+    
+    print("Starting to solve the PDE")
+    for n in range(n_time_step):
+        if (n + 1) % 10 == 0:
+            print("Time step {} of {}".format(n+1, n_time_step))
+        
+        # Update time-step 
+        t += dt
+        
+        # Solve linear variational problem for time step
+        b = assemble(Fb)
+        solve(A,  U.vector(), b)        
+        
+        # Save current time-step to file 
+        _u_1, _u_2, = U.split()
+        vtkfile_u_1 << (_u_1, t)
+        vtkfile_u_2 << (_u_2, t)
+        
+        # Update previous solution 
+        u_n.assign(U)
 
 
 # Function that will solve the Schankenberg reaction diffusion system when the
@@ -104,8 +227,13 @@ def formulate_FEM_equation(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx):
 #     n_time_step, the number of time steps
 #     mesh_folder, path to the folder where the mesh is located
 #     df_index_list, a list of which measures to use when defining the sub-domains
-#     folder_save, the folder to save the result in 
-def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save):
+#     folder_save, the folder to save the result in
+#     use_backward, if true the backward Euler method is used for solving the problem,
+#         by default explicit Euler is desired. 
+def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, use_backward=False, seed=123):
+    
+    # Setting the seed to reproduce the result 
+    np.random.seed(seed)
     
     # Reading the mesh into FeniCS 
     mesh = Mesh()
@@ -141,15 +269,13 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, 
     
     # Function space to approximate solution in 
     V = FunctionSpace(mesh, element)
-    u = Function(V)
     u_n = Function(V)
     
     # Expression for the initial conditions 
     u0_exp = ic(u0_1 = u0_1, u0_2 = u0_2, sigma = 0.05, element = V.ufl_element())
     
-    # Test and trial functions 
+    # Test functions, and initial values 
     v_1, v_2 = TestFunctions(V)
-    u_1, u_2 = split(u)
     u_n.interpolate(u0_exp)
     u_n1, u_n2 = split(u_n)
     
@@ -161,50 +287,32 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, 
     ds = Measure("ds", domain=mesh, subdomain_data=line_domain)
     dS = Measure("dS", domain=mesh, subdomain_data=line_domain)
     
-    # Normal vector
-    n = FacetNormal(mesh)
-    
-    # The weak form, backward Euler in time, solve over all 
+    # The weak form of the different measures 
     F = 0
-    for i in dx_index_list:
-        F += formulate_FEM_equation(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
+    if use_backward == True:
+        print("Backward weak form")
+        u = Function(V)
+        u_1, u_2 = split(u)
+        for i in dx_index_list:
+            F += formulate_FEM_equation(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
         
-    # Files for saving the end result
-    file1 = folder_save + "/u_1.pvd"
-    file2 = folder_save + "/u_2.pvd"
-    vtkfile_u_1 = File(file1)
-    vtkfile_u_2 = File(file2)
+        # Solving the backward system 
+        solve_backward_euler(V, F, u, u_n, dt, folder_save, n_time_step)
+        
+    elif use_backward == False:
+        print("Solving using the forward Euler method")
+        u_1, u_2 = TrialFunctions(V)
+        for i in dx_index_list:
+            F += formulate_FEM_equation_forward_time(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
+        
+        # Solve the PDE-system 
+        solve_forward_euler(V, F, u_n, folder_save, dt, n_time_step)
     
-    # Solving the problem in time
-    t = 0
-    print("Starting to solve the PDE")
-    dU = Function(V)
-    for n in range(n_time_step):
-        if (n + 1) % 10 == 0:
-            print("Time step {} of {}".format(n+1, n_time_step))
-        
-        # Update time-step 
-        t += dt
-        
-        # Iterate 10-times when trying to solve the problem
-        # In the future look  into explicit stepping 
-        for m in range(0, 10):
-            A = assemble(derivative(F, u), keep_diagonal = True) # Define the derivative
-            R = assemble(F) # Define the right hand side
-            A.ident_zeros() # Fix "zero"-rows to get consistent system
-            solve(A, dU.vector(), R) # Solver matrix system
-            u.assign(u - dU) # Update solution one step    
-        
-        # Save current time-step to file 
-        _u_1, _u_2, = u.split()
-        vtkfile_u_1 << (_u_1, t)
-        vtkfile_u_2 << (_u_2, t)
-        u_n.assign(u)
-        
-        u1, u2 = u.split()
-        test = inner(Constant((1, 1, 1)), grad(u1))
-        #flux = assemble(Constant(1) * inner(grad(u1), n)) * dS(10))
 
+
+# -----------------------------------------------------------------------------------
+# End of functions 
+# -----------------------------------------------------------------------------------
 
 # ------------------------------------------------------------------------------------
 # Rectangle zero holes 
@@ -215,9 +323,8 @@ dir_name = "pwd_files_rectangles/"
 if not os.path.isdir(dir_name):
     os.mkdir(dir_name)
 
-
 # ------------------------------------------------------------------------------------
-# Rectangle zero holes 
+# Rectangle zero holes, using backward 
 # ------------------------------------------------------------------------------------
 # Parameters 
 param = param_schankenberg(gamma=20, d=100)
@@ -234,6 +341,26 @@ read_and_convert_mesh(path_to_msh_file, mesh_folder)
 
 # Solve the system and store the result in test_sub_save
 folder_save = "pwd_files_rectangles/no_hole/"
+solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, use_backward=True)
+
+# ------------------------------------------------------------------------------------
+# Rectangle zero holes, forward method 
+# ------------------------------------------------------------------------------------
+# Parameters 
+param = param_schankenberg(gamma=20, d=100)
+t_end = 2
+n_time_step = 500
+
+# The index for the relevant surface measure 
+dx_index_list = [1]
+
+# Read the msh and store resulting files in Intermediate 
+path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_no_hole.msh"
+mesh_folder = "../../../Intermediate/Rectangle_zero_holes/"
+read_and_convert_mesh(path_to_msh_file, mesh_folder)
+
+# Solve the system and store the result in test_sub_save
+folder_save = "pwd_files_rectangles/no_hole_forward/"
 solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
 
 # ------------------------------------------------------------------------------------
@@ -257,5 +384,5 @@ read_and_convert_mesh(path_to_msh_file, mesh_folder)
 
 # Solve the system and store the result in test_sub_save
 folder_save = "test_sub_save"
-solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
+#solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
 
