@@ -12,7 +12,7 @@ import os
 
 # Class to hold the parameters for the Schankenberg model 
 class param_schankenberg:
-    def __init__(self,a=0.2,b=2.0,gamma=100.0,d=50.0):
+    def __init__(self, a=0.2, b=2.0, gamma=100.0, d=50.0):
         self.a = a
         self.b = b
         self.gamma = gamma
@@ -75,7 +75,7 @@ def read_and_convert_mesh(path_to_msh_file, folder_save):
 #    v_1, v_2, the test functions
 #    u_n1, u_n2, trial functions for previous step
 #    dt_inv, the inverted time
-#    dx, the space measure
+#    dx, the space measure 
 def formulate_FEM_equation(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx):
     dt_inv = Constant(dt_inv)
     a = Constant(param.a)
@@ -161,6 +161,9 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, 
     ds = Measure("ds", domain=mesh, subdomain_data=line_domain)
     dS = Measure("dS", domain=mesh, subdomain_data=line_domain)
     
+    # Normal vector
+    n = FacetNormal(mesh)
+    
     # The weak form, backward Euler in time, solve over all 
     F = 0
     for i in dx_index_list:
@@ -197,18 +200,55 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, 
         vtkfile_u_1 << (_u_1, t)
         vtkfile_u_2 << (_u_2, t)
         u_n.assign(u)
+        
+        u1, u2 = u.split()
+        test = inner(Constant((1, 1, 1)), grad(u1))
+        #flux = assemble(Constant(1) * inner(grad(u1), n)) * dS(10))
 
 
-# -----------------------------------------------------------------------------------------
-# Rectangle with one hole
-# -----------------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------------
+# Rectangle zero holes 
+# Trying out rectangles with a different amount of holes
+# ------------------------------------------------------------------------------------
+# Create directory for saving the rectangle cases
+dir_name = "pwd_files_rectangles/"
+if not os.path.isdir(dir_name):
+    os.mkdir(dir_name)
+
+
+# ------------------------------------------------------------------------------------
+# Rectangle zero holes 
+# ------------------------------------------------------------------------------------
 # Parameters 
-param = param_schankenberg(gamma = 10, d=100)
-t_end = 3
+param = param_schankenberg(gamma=20, d=100)
+t_end = 2
 n_time_step = 200
 
 # The index for the relevant surface measure 
 dx_index_list = [1]
+
+# Read the msh and store resulting files in Intermediate 
+path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_no_hole.msh"
+mesh_folder = "../../../Intermediate/Rectangle_zero_holes/"
+read_and_convert_mesh(path_to_msh_file, mesh_folder)
+
+# Solve the system and store the result in test_sub_save
+folder_save = "pwd_files_rectangles/no_hole/"
+solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
+
+# ------------------------------------------------------------------------------------
+# Rectangle with one hole
+# ------------------------------------------------------------------------------------
+# Parameters 
+param = param_schankenberg(gamma = 10, d=100)
+t_end = 4
+n_time_step = 500
+
+# The index for the relevant surface measure 
+dx_index_list = [1]
+
+# Want to reproduce the result
+np.random.seed(123)
 
 # Read the msh and store resulting files in Intermediate 
 path_to_msh_file = "../../Gmsh/sub_dom.msh"
