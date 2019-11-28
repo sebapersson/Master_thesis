@@ -363,7 +363,7 @@ read_and_convert_mesh(path_to_msh_file, mesh_folder)
 # Solve the system and store the result in test_sub_save
 folder_save = "pwd_files_rectangles/no_hole_forward/"
 print("Solving PDE rectangle with zero holes")
-solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
+#solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
 
 # ------------------------------------------------------------------------------------
 # Rectangle with five holes
@@ -384,4 +384,25 @@ read_and_convert_mesh(path_to_msh_file, mesh_folder)
 # Solving using the forward method
 folder_save = "pwd_files_rectangles/rectangle_five_holes/"
 print("Solving PDE rectangle with five holes")
+#solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
+
+# ------------------------------------------------------------------------------------
+# Rectangle with 15 holes
+# ------------------------------------------------------------------------------------
+# Parameters 
+param = param_schankenberg(gamma=10, d=100)
+t_end = 5
+n_time_step = 1000
+
+# The index for the relevant surface measure 
+dx_index_list = [1]
+
+# Read the msh and store resulting files in Intermediate 
+path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_20_holes.msh"
+mesh_folder = "../../../Intermediate/Rectangle_20_holes/"
+read_and_convert_mesh(path_to_msh_file, mesh_folder)
+
+# Solving using the forward method
+folder_save = "pwd_files_rectangles/rectangle_20_holes/"
+print("Solving PDE rectangle with 20 holes")
 solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
