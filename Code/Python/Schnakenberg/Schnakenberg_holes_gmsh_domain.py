@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from dolfin import *
 import meshio
@@ -175,11 +176,12 @@ def solve_backward_euler(V, F, u, u_n, dt, folder_save, n_time_step):
 #     u, the test functions
 #     u_n, the previous step solution
 #     folder_save, the folder to save the result in
+#     folder_save_max, the location to where the maximum concentration file should be saved 
 #     dt, the step size
 #     n_time_step, the number of time steps used when solving the problem 
 # Returns:
 #     void 
-def solve_forward_euler(V, F, u_n, folder_save, dt, n_time_step):
+def solve_forward_euler(V, F, u_n, folder_save, folder_save_max, dt, n_time_step):
     # Files for saving the end result
     file1 = folder_save + "/u_1.pvd"
     file2 = folder_save + "/u_2.pvd"
@@ -198,11 +200,15 @@ def solve_forward_euler(V, F, u_n, folder_save, dt, n_time_step):
     A.ident_zeros()
     
     print("Starting to solve the PDE")
+    
+    # Vector for keeping track on maximum concentration 
+    max_conc = np.zeros((n_time_step, 2))
+    
     for n in range(n_time_step):
         if (n + 1) % 100 == 0:
             print("Time step {} of {}".format(n+1, n_time_step))
         
-        # Update time-step 
+        # Update time-step
         t += dt
         
         # Solve linear variational problem for time step
@@ -214,9 +220,17 @@ def solve_forward_euler(V, F, u_n, folder_save, dt, n_time_step):
         vtkfile_u_1 << (_u_1, t)
         vtkfile_u_2 << (_u_2, t)
         
+        # Store the maximum value
+        max_conc[n, 0] = t
+        max_conc[n, 1] = np.max(_u_1.vector().get_local())
+        
         # Update previous solution 
         u_n.assign(U)
-
+        
+    # Write matrix to file 
+    data_to_save = pd.DataFrame({"time": max_conc[0:, 0], "Max_conc": max_conc[0:, 1]})
+    with open(folder_save_max, 'a') as f:
+        data_to_save.to_csv(f, header=False)
 
 # Function that will solve the Schankenberg reaction diffusion system when the
 # when the holes are defined via subdomains with zero flux and that the concentration
@@ -229,9 +243,10 @@ def solve_forward_euler(V, F, u_n, folder_save, dt, n_time_step):
 #     mesh_folder, path to the folder where the mesh is located
 #     df_index_list, a list of which measures to use when defining the sub-domains
 #     folder_save, the folder to save the result in
+#     folder_save_max, the path to where the maximum concentration is saved
 #     use_backward, if true the backward Euler method is used for solving the problem,
 #         by default explicit Euler is desired. 
-def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, use_backward=False, seed=123):
+def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, folder_save_max, use_backward=False, seed=123):
     
     # Setting the seed to reproduce the result 
     np.random.seed(seed)
@@ -307,7 +322,7 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, 
             F += formulate_FEM_equation_forward_time(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
         
         # Solve the PDE-system 
-        solve_forward_euler(V, F, u_n, folder_save, dt, n_time_step)
+        solve_forward_euler(V, F, u_n, folder_save, folder_save_max, dt, n_time_step)
     
 
 
@@ -362,8 +377,9 @@ read_and_convert_mesh(path_to_msh_file, mesh_folder)
 
 # Solve the system and store the result in test_sub_save
 folder_save = "pwd_files_rectangles/no_hole_forward/"
+folder_save_max = "../../../Intermediate/Max_conc_0_holes_rec.csv"
 print("Solving PDE rectangle with zero holes")
-#solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
+solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, folder_save_max)
 
 # ------------------------------------------------------------------------------------
 # Rectangle with five holes
@@ -383,8 +399,9 @@ read_and_convert_mesh(path_to_msh_file, mesh_folder)
 
 # Solving using the forward method
 folder_save = "pwd_files_rectangles/rectangle_five_holes/"
+folder_save_max = "../../../Intermediate/Max_conc_5_holes_rec.csv"
 print("Solving PDE rectangle with five holes")
-#solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
+solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, folder_save_max)
 
 # ------------------------------------------------------------------------------------
 # Rectangle with 15 holes
@@ -404,5 +421,6 @@ read_and_convert_mesh(path_to_msh_file, mesh_folder)
 
 # Solving using the forward method
 folder_save = "pwd_files_rectangles/rectangle_20_holes/"
+folder_save_max = "../../../Intermediate/Max_conc_20_holes_rec.csv"
 print("Solving PDE rectangle with 20 holes")
-solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
+solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, folder_save_max)
