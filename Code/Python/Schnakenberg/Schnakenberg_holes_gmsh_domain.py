@@ -239,6 +239,7 @@ def solve_forward_euler(V, F, u_n, folder_save, folder_save_max, dt, n_time_step
 #     param, a parameter class object containing the parameters of the model
 #     t_end, the end time when solving the system
 #     n_time_step, the number of time steps
+#     dx_index_list, a list of which space surface measures to solve the PDE over
 #     mesh_folder, path to the folder where the mesh is located
 #     df_index_list, a list of which measures to use when defining the sub-domains
 #     folder_save, the folder to save the result in
@@ -246,7 +247,7 @@ def solve_forward_euler(V, F, u_n, folder_save, folder_save_max, dt, n_time_step
 #         i run more than one time the file will be appended 
 #     use_backward, if true the backward Euler method is used for solving the problem,
 #         by default explicit Euler is desired. 
-def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, folder_save_max, use_backward=False, seed=123):
+def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, mesh_folder, folder_save, folder_save_max, use_backward=False, seed=123):
     
     # Setting the seed to reproduce the result 
     np.random.seed(seed)
@@ -326,101 +327,53 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, 
     
 
 
-# -----------------------------------------------------------------------------------
-# End of functions 
-# -----------------------------------------------------------------------------------
+# Function that will solve the PDE:s for different number of holes for the
+# rectangle case. In order to compare models each model will be run with the
+# same parameter set and time interval 
+def solve_schankenberg_triangles(n_time_step, t_end, param, seed=123):
+    # Create directory for saving the rectangle cases
+    dir_name = "pwd_files_rectangles/"
+    if not os.path.isdir(dir_name):
+        os.mkdir(dir_name)
+    
+    ## Zero holes case 
+    dx_index_list = [1]
+    path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_no_hole.msh"
+    mesh_folder = "../../../Intermediate/Rectangle_zero_holes/"
+    read_and_convert_mesh(path_to_msh_file, mesh_folder)
+    folder_save = "pwd_files_rectangles/no_hole_forward/"
+    folder_save_max = "../../../Intermediate/Max_conc_0_holes_rec.csv"
+    print("Solving PDE rectangle with zero holes")
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, mesh_folder, folder_save, folder_save_max, seed=seed)
+    
+    ## Five holes case 
+    dx_index_list = [1]
+    path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_five_holes.msh"
+    mesh_folder = "../../../Intermediate/Rectangle_five_holes/"
+    read_and_convert_mesh(path_to_msh_file, mesh_folder)
+    folder_save = "pwd_files_rectangles/rectangle_five_holes/"
+    folder_save_max = "../../../Intermediate/Max_conc_5_holes_rec.csv"
+    print("Solving PDE rectangle with five holes")
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, mesh_folder, folder_save, folder_save_max, seed=seed)
+    
+    ## 20 holes case
+    dx_index_list = [1]
+    path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_20_holes.msh"
+    mesh_folder = "../../../Intermediate/Rectangle_20_holes/"
+    read_and_convert_mesh(path_to_msh_file, mesh_folder)
+    folder_save = "pwd_files_rectangles/rectangle_20_holes/"
+    folder_save_max = "../../../Intermediate/Max_conc_20_holes_rec.csv"
+    print("Solving PDE rectangle with 20 holes")
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, mesh_folder, folder_save, folder_save_max, seed=seed)
 
-# ------------------------------------------------------------------------------------
-# Rectangle zero holes 
-# Trying out rectangles with a different amount of holes
-# ------------------------------------------------------------------------------------
-# Create directory for saving the rectangle cases
-dir_name = "pwd_files_rectangles/"
-if not os.path.isdir(dir_name):
-    os.mkdir(dir_name)
-
-# ------------------------------------------------------------------------------------
-# Rectangle zero holes, using backward 
-# ------------------------------------------------------------------------------------
-# Parameters 
-param = param_schankenberg(gamma=20, d=100)
-t_end = 2
-n_time_step = 200
-
-# The index for the relevant surface measure 
-dx_index_list = [1]
-
-# Read the msh and store resulting files in Intermediate 
-path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_no_hole.msh"
-mesh_folder = "../../../Intermediate/Rectangle_zero_holes/"
-read_and_convert_mesh(path_to_msh_file, mesh_folder)
-
-# Solve the system and store the result in test_sub_save
-folder_save = "pwd_files_rectangles/no_hole/"
-#solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, use_backward=True)
-
-# ------------------------------------------------------------------------------------
-# Rectangle zero holes, forward method 
-# ------------------------------------------------------------------------------------
-# Parameters 
+# Solving the rectangle case
 param = param_schankenberg(gamma=10, d=100)
 t_end = 5
 n_time_step = 1000
+times_run = 20
 
-# The index for the relevant surface measure 
-dx_index_list = [1]
-
-# Read the msh and store resulting files in Intermediate 
-path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_no_hole.msh"
-mesh_folder = "../../../Intermediate/Rectangle_zero_holes/"
-read_and_convert_mesh(path_to_msh_file, mesh_folder)
-
-# Solve the system and store the result in test_sub_save
-folder_save = "pwd_files_rectangles/no_hole_forward/"
-folder_save_max = "../../../Intermediate/Max_conc_0_holes_rec.csv"
-print("Solving PDE rectangle with zero holes")
-solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, folder_save_max)
-
-# ------------------------------------------------------------------------------------
-# Rectangle with five holes
-# ------------------------------------------------------------------------------------
-# Parameters 
-param = param_schankenberg(gamma=10, d=100)
-t_end = 5
-n_time_step = 1000
-
-# The index for the relevant surface measure 
-dx_index_list = [1]
-
-# Read the msh and store resulting files in Intermediate 
-path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_five_holes.msh"
-mesh_folder = "../../../Intermediate/Rectangle_five_holes/"
-read_and_convert_mesh(path_to_msh_file, mesh_folder)
-
-# Solving using the forward method
-folder_save = "pwd_files_rectangles/rectangle_five_holes/"
-folder_save_max = "../../../Intermediate/Max_conc_5_holes_rec.csv"
-print("Solving PDE rectangle with five holes")
-solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, folder_save_max)
-
-# ------------------------------------------------------------------------------------
-# Rectangle with 20 holes
-# ------------------------------------------------------------------------------------
-# Parameters 
-param = param_schankenberg(gamma=10, d=100)
-t_end = 5
-n_time_step = 1000
-
-# The index for the relevant surface measure 
-dx_index_list = [1]
-
-# Read the msh and store resulting files in Intermediate 
-path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_20_holes.msh"
-mesh_folder = "../../../Intermediate/Rectangle_20_holes/"
-read_and_convert_mesh(path_to_msh_file, mesh_folder)
-
-# Solving using the forward method
-folder_save = "pwd_files_rectangles/rectangle_20_holes/"
-folder_save_max = "../../../Intermediate/Max_conc_20_holes_rec.csv"
-print("Solving PDE rectangle with 20 holes")
-solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, folder_save_max)
+# Run the code with different seeds
+np.random.seed(123)
+seed_list = np.random.randint(low=1, high=1000, size=times_run)
+for seed in seed_list:
+    solve_schankenberg_triangles(n_time_step, t_end, param, seed=seed)
