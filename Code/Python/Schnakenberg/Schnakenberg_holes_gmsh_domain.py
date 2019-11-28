@@ -91,6 +91,7 @@ def formulate_FEM_equation(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx):
     
     return F
 
+
 # Function that will formulate the nonlinear system (F) for the Schankenberg model
 # with a specific dx-measure. This approaches uses the explicit Euler method when
 # stepping in time.
@@ -198,7 +199,7 @@ def solve_forward_euler(V, F, u_n, folder_save, dt, n_time_step):
     
     print("Starting to solve the PDE")
     for n in range(n_time_step):
-        if (n + 1) % 10 == 0:
+        if (n + 1) % 100 == 0:
             print("Time step {} of {}".format(n+1, n_time_step))
         
         # Update time-step 
@@ -341,15 +342,15 @@ read_and_convert_mesh(path_to_msh_file, mesh_folder)
 
 # Solve the system and store the result in test_sub_save
 folder_save = "pwd_files_rectangles/no_hole/"
-solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, use_backward=True)
+#solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, use_backward=True)
 
 # ------------------------------------------------------------------------------------
 # Rectangle zero holes, forward method 
 # ------------------------------------------------------------------------------------
 # Parameters 
-param = param_schankenberg(gamma=20, d=100)
-t_end = 2
-n_time_step = 500
+param = param_schankenberg(gamma=10, d=100)
+t_end = 5
+n_time_step = 1000
 
 # The index for the relevant surface measure 
 dx_index_list = [1]
@@ -361,28 +362,26 @@ read_and_convert_mesh(path_to_msh_file, mesh_folder)
 
 # Solve the system and store the result in test_sub_save
 folder_save = "pwd_files_rectangles/no_hole_forward/"
+print("Solving PDE rectangle with zero holes")
 solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
 
 # ------------------------------------------------------------------------------------
-# Rectangle with one hole
+# Rectangle with five holes
 # ------------------------------------------------------------------------------------
 # Parameters 
-param = param_schankenberg(gamma = 10, d=100)
-t_end = 4
-n_time_step = 500
+param = param_schankenberg(gamma=10, d=100)
+t_end = 5
+n_time_step = 1000
 
 # The index for the relevant surface measure 
 dx_index_list = [1]
 
-# Want to reproduce the result
-np.random.seed(123)
-
 # Read the msh and store resulting files in Intermediate 
-path_to_msh_file = "../../Gmsh/sub_dom.msh"
-mesh_folder = "../../../Intermediate/Rectangle_one_hole/"
+path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_five_holes.msh"
+mesh_folder = "../../../Intermediate/Rectangle_five_holes/"
 read_and_convert_mesh(path_to_msh_file, mesh_folder)
 
-# Solve the system and store the result in test_sub_save
-folder_save = "test_sub_save"
-#solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
-
+# Solving using the forward method
+folder_save = "pwd_files_rectangles/rectangle_five_holes/"
+print("Solving PDE rectangle with five holes")
+solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save)
