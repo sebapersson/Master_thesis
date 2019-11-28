@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 from dolfin import *
 import meshio
 import os
+from tqdm import tqdm
 
 # -----------------------------------------------------------------------------------
 # Classes for solving the problem
@@ -204,9 +205,7 @@ def solve_forward_euler(V, F, u_n, folder_save, folder_save_max, dt, n_time_step
     # Vector for keeping track on maximum concentration 
     max_conc = np.zeros((n_time_step, 2))
     
-    for n in range(n_time_step):
-        if (n + 1) % 100 == 0:
-            print("Time step {} of {}".format(n+1, n_time_step))
+    for n in tqdm(range(n_time_step)):
         
         # Update time-step
         t += dt
@@ -243,7 +242,8 @@ def solve_forward_euler(V, F, u_n, folder_save, folder_save_max, dt, n_time_step
 #     mesh_folder, path to the folder where the mesh is located
 #     df_index_list, a list of which measures to use when defining the sub-domains
 #     folder_save, the folder to save the result in
-#     folder_save_max, the path to where the maximum concentration is saved
+#     folder_save_max, the path to where the maximum concentration is saved, if the code
+#         i run more than one time the file will be appended 
 #     use_backward, if true the backward Euler method is used for solving the problem,
 #         by default explicit Euler is desired. 
 def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, folder_save_max, use_backward=False, seed=123):
@@ -404,7 +404,7 @@ print("Solving PDE rectangle with five holes")
 solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, mesh_folder, folder_save, folder_save_max)
 
 # ------------------------------------------------------------------------------------
-# Rectangle with 15 holes
+# Rectangle with 20 holes
 # ------------------------------------------------------------------------------------
 # Parameters 
 param = param_schankenberg(gamma=10, d=100)
