@@ -176,8 +176,9 @@ def solve_backward_euler(V, F, u, u_n, dt, file_locations, n_time_step):
         u_n.assign(u)
 
 
-# FEM-solver for the backward Euler method, note that currently 10-iterations are used
-# when solving the system of equations.
+# FEM-solver for the forward Euler system. Besides solving the system the
+# maximal u1 concentration is saved at each iterations and written to
+# file. 
 # Args:
 #     F, the variational formulation
 #     u, the test functions
@@ -244,6 +245,7 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
     # Returning the states at the final time
     return _u_1, _u_2
 
+
 # Function that will solve the Schankenberg reaction diffusion system when the
 # when the holes are defined via subdomains with zero flux and that the concentration
 # is zero within the holes. The mesh, with subdomains, is read from msh-file that
@@ -256,7 +258,12 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
 #     file_locations, a class object containing all the file locations for saving the result 
 #     use_backward, if true the backward Euler method is used for solving the problem,
 #         by default explicit Euler is desired.
-#     seed, the seed to use when generating the random initial states 
+#     seed, the seed to use when generating the random initial states
+# Returns:
+#     pwd-files, the function will save and output pwd-files for plotting
+#     max_conc-file, a csv-file containing the maximum concentration at each time step
+#     t_end-file, a csv-file containing the concentrations at the end time. Note that upon running the function
+#         several times the function will append already existing csv-files. 
 def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations, use_backward=False, seed=123):
     
     # Setting the seed to reproduce the result 
@@ -353,7 +360,6 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
     
 
 
-
 # Function that will solve the PDE:s for different number of holes for the
 # rectangle case. In order to compare models each model will be run with the
 # same parameter set and time interval 
@@ -383,6 +389,10 @@ def solve_schankenberg_triangles(n_time_step, t_end, param, seed=123):
     dx_index_list = [1]
     solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_twenty, seed=seed)
 
+
+# -----------------------------------------------------------------------------------
+# End of functions
+# -----------------------------------------------------------------------------------
 
 # Solving the rectangle case
 param = param_schankenberg(gamma=10, d=100)
