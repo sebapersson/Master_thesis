@@ -2,7 +2,6 @@
 
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 from dolfin import *
 import meshio
 import os
@@ -19,6 +18,15 @@ class param_schankenberg:
         self.b = b
         self.gamma = gamma
         self.d = d
+
+
+# Class to hold the file-locations for a model
+class file_locations_class:
+    def __init__(self, model_name, geometry):
+        self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + model_name + ".msh"
+        self.mesh_folder = "../../../Intermediate/" + geometry + "/" + model_name + "_mesh/"
+        self.pwd_folder = "../../../Result/" + geometry + "_pwd_files/" + model_name + "/"
+        self.file_save_folder = "../../../Intermediate/" + geometry + "/" + model_name + "_files/"
 
 # Class for constructing the initial conditions for each state (python syntax)
 # Note that the pattern formation is sensitive to the noise sigma. 
@@ -44,27 +52,26 @@ class ic(UserExpression):
 # subdomains, the entire mesh, and lines for a 2d geometry. The result will be stored
 # in a used-provided folder.
 # Args:
-#    path_to_msh_file, path to the msh-file assuming the directory the script is run form
-#    folder_save, path to the folder where the result will be saved.
+#    file_locations, an object of type file locations (contains all file locations for a model)
 # Returns:
 #    void
-def read_and_convert_mesh(path_to_msh_file, folder_save):
+def read_and_convert_mesh(file_locations):
     # Convert the mesh to xdmf format 
-    msh = meshio.read(path_to_msh_file)
+    msh = meshio.read(file_locations.path_to_msh_file)
     
     # Create directory if doesn't exist 
-    if not os.path.isdir(folder_save):
-        os.mkdir(folder_save)
+    if not os.path.isdir(file_locations.mesh_folder):
+        os.makedirs(file_locations.mesh_folder)
     
     # Write all triangles
-    meshio.write(folder_save + "mesh.xdmf", meshio.Mesh(points=msh.points, cells={"triangle": msh.cells["triangle"]}))
+    meshio.write(file_locations.mesh_folder + "mesh.xdmf", meshio.Mesh(points=msh.points, cells={"triangle": msh.cells["triangle"]}))
     
     # Write the triangle subdomains 
-    meshio.write(folder_save + "subdomains.xdmf", meshio.Mesh(points=msh.points, cells={"triangle": msh.cells["triangle"]},
+    meshio.write(file_locations.mesh_folder + "subdomains.xdmf", meshio.Mesh(points=msh.points, cells={"triangle": msh.cells["triangle"]},
                                                               cell_data={"triangle": {"name_to_read": msh.cell_data["triangle"]["gmsh:physical"]}}))
     
     # Write the lines 
-    meshio.write(folder_save + "lines.xdmf", meshio.Mesh(points=msh.points, cells={"line": msh.cells["line"]},
+    meshio.write(file_locations.mesh_folder + "lines.xdmf", meshio.Mesh(points=msh.points, cells={"line": msh.cells["line"]},
                                                          cell_data={"line": {"name_to_read": msh.cell_data["line"]["gmsh:physical"]}}))
 
 
@@ -130,22 +137,21 @@ def formulate_FEM_equation_forward_time(param, u_1, u_2, v_1, v_2, u_n1, u_n2,
 #     F, the variational formulation
 #     u, the test functions
 #     u_n, the previous step solution
-#     folder_save, the folder to save the result in
+#     file_locations, a folder with the file locations for a current model 
 #     dt, the step size
 #     n_time_step, the number of time steps used when solving the problem 
 # Returns:
 #     void 
-def solve_backward_euler(V, F, u, u_n, dt, folder_save, n_time_step):
+def solve_backward_euler(V, F, u, u_n, dt, file_locations, n_time_step):
     
     # Files for saving the end result
-    file1 = folder_save + "/u_1.pvd"
-    file2 = folder_save + "/u_2.pvd"
+    file1 = file_locations.pwd_folder + "/u_1.pvd"
+    file2 = file_locations.pwd_folder + "/u_2.pvd"
     vtkfile_u_1 = File(file1)
     vtkfile_u_2 = File(file2)
     
     # Solving the problem in time
     t = 0
-    print("Starting to solve the PDE")
     dU = Function(V)
     for n in range(n_time_step):
         if (n + 1) % 10 == 0:
@@ -176,16 +182,15 @@ def solve_backward_euler(V, F, u, u_n, dt, folder_save, n_time_step):
 #     F, the variational formulation
 #     u, the test functions
 #     u_n, the previous step solution
-#     folder_save, the folder to save the result in
-#     folder_save_max, the location to where the maximum concentration file should be saved 
+#     file_locations, a class object with the file locations for the model 
 #     dt, the step size
 #     n_time_step, the number of time steps used when solving the problem 
 # Returns:
-#     void 
-def solve_forward_euler(V, F, u_n, folder_save, folder_save_max, dt, n_time_step):
+#     u_1, u_2, the states at the final time (can be used for plotting)
+def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
     # Files for saving the end result
-    file1 = folder_save + "/u_1.pvd"
-    file2 = folder_save + "/u_2.pvd"
+    file1 = file_locations.pwd_folder + "/u_1.pvd"
+    file2 = file_locations.pwd_folder + "/u_2.pvd"
     vtkfile_u_1 = File(file1)
     vtkfile_u_2 = File(file2)
     
@@ -199,8 +204,6 @@ def solve_forward_euler(V, F, u_n, folder_save, folder_save_max, dt, n_time_step
     Fb = rhs(F)
     A = assemble(FA, keep_diagonal = True)
     A.ident_zeros()
-    
-    print("Starting to solve the PDE")
     
     # Vector for keeping track on maximum concentration 
     max_conc = np.zeros((n_time_step, 2))
@@ -226,10 +229,20 @@ def solve_forward_euler(V, F, u_n, folder_save, folder_save_max, dt, n_time_step
         # Update previous solution 
         u_n.assign(U)
         
-    # Write matrix to file 
+    
+    # Write the maximum concentration to file 
     data_to_save = pd.DataFrame({"time": max_conc[0:, 0], "Max_conc": max_conc[0:, 1]})
-    with open(folder_save_max, 'a') as f:
-        data_to_save.to_csv(f, header=False)
+    file_save = file_locations.file_save_folder + "max_conc.csv"
+    # Create folder if not present
+    if not os.path.isdir(file_locations.file_save_folder):
+        os.mkdir(file_locations.file_save_folder)
+    # If the file doesn't exist write a header, else append the result 
+    if not os.path.isfile(file_save):
+        data_to_save.to_csv(file_save)
+    else:
+        data_to_save.to_csv(file_save, header=False, mode='a')
+    # Returning the states at the final time
+    return _u_1, _u_2
 
 # Function that will solve the Schankenberg reaction diffusion system when the
 # when the holes are defined via subdomains with zero flux and that the concentration
@@ -240,36 +253,33 @@ def solve_forward_euler(V, F, u_n, folder_save, folder_save_max, dt, n_time_step
 #     t_end, the end time when solving the system
 #     n_time_step, the number of time steps
 #     dx_index_list, a list of which space surface measures to solve the PDE over
-#     mesh_folder, path to the folder where the mesh is located
-#     df_index_list, a list of which measures to use when defining the sub-domains
-#     folder_save, the folder to save the result in
-#     folder_save_max, the path to where the maximum concentration is saved, if the code
-#         i run more than one time the file will be appended 
+#     file_locations, a class object containing all the file locations for saving the result 
 #     use_backward, if true the backward Euler method is used for solving the problem,
-#         by default explicit Euler is desired. 
-def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, mesh_folder, folder_save, folder_save_max, use_backward=False, seed=123):
+#         by default explicit Euler is desired.
+#     seed, the seed to use when generating the random initial states 
+def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations, use_backward=False, seed=123):
     
     # Setting the seed to reproduce the result 
     np.random.seed(seed)
     
     # Reading the mesh into FeniCS 
     mesh = Mesh()
-    with XDMFFile(mesh_folder + "mesh.xdmf") as infile:
+    with XDMFFile(file_locations.mesh_folder + "mesh.xdmf") as infile:
         infile.read(mesh)
     
     # Reading the triangle subdomains and storing them 
     sub_domains_pre = MeshValueCollection("size_t", mesh, 2)
-    with XDMFFile(mesh_folder + "subdomains.xdmf") as infile:
+    with XDMFFile(file_locations.mesh_folder + "subdomains.xdmf") as infile:
         infile.read(sub_domains_pre, "name_to_read")
     sub_domains = cpp.mesh.MeshFunctionSizet(mesh, sub_domains_pre)
     
     # Reading the line boundaries and storing them 
     line_domain_pre = MeshValueCollection("size_t", mesh, 1)
-    with XDMFFile(mesh_folder + "lines.xdmf") as infile:
+    with XDMFFile(file_locations.mesh_folder + "lines.xdmf") as infile:
         infile.read(line_domain_pre, "name_to_read")
     line_domain = cpp.mesh.MeshFunctionSizet(mesh, line_domain_pre)
     
-    # Only display potential errors when solving the problem  
+    # Only display potential errors when solving the PDE-system 
     set_log_level(40)
     
     # Initial values for the Schankenberg model 
@@ -295,6 +305,13 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
     v_1, v_2 = TestFunctions(V)
     u_n.interpolate(u0_exp)
     u_n1, u_n2 = split(u_n)
+    
+    # Try to get the coordinates
+    n = V.dim()  
+    d = mesh.geometry().dim()
+    dof_coordinates = V.tabulate_dof_coordinates().reshape(n, d)
+    dof_x = dof_coordinates[:, 0]                 
+    dof_y = dof_coordinates[:, 1]
     
     # Define the different measures, note that:
     # dx -> surfaces (in this case)
@@ -323,54 +340,55 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
             F += formulate_FEM_equation_forward_time(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
         
         # Solve the PDE-system 
-        solve_forward_euler(V, F, u_n, folder_save, folder_save_max, dt, n_time_step)
+        u1, u2 = solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step)
     
+    # Write the t_end result to file 
+    t_end_data = pd.DataFrame({"x": dof_x, "y": dof_y, "u1": u1.vector().get_local(), "u2": u2.vector().get_local()})
+    file_save = file_locations.file_save_folder + "t_end_data.csv"
+    # If file doesn't exist write header, else append file 
+    if not os.path.isfile(file_save):
+        t_end_data.to_csv(file_save)
+    else:
+        t_end_data.to_csv(file_save, header=False, mode='a')
+    
+
 
 
 # Function that will solve the PDE:s for different number of holes for the
 # rectangle case. In order to compare models each model will be run with the
 # same parameter set and time interval 
 def solve_schankenberg_triangles(n_time_step, t_end, param, seed=123):
-    # Create directory for saving the rectangle cases
-    dir_name = "pwd_files_rectangles/"
-    if not os.path.isdir(dir_name):
-        os.mkdir(dir_name)
+    # The file locations for each case
+    file_locations_zero = file_locations_class("Zero_holes", "Rectangles")
+    file_locations_five = file_locations_class("Five_holes", "Rectangles")
+    file_locations_twenty = file_locations_class("Twenty_holes", "Rectangles")
     
-    ## Zero holes case 
-    dx_index_list = [1]
-    path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_no_hole.msh"
-    mesh_folder = "../../../Intermediate/Rectangle_zero_holes/"
-    read_and_convert_mesh(path_to_msh_file, mesh_folder)
-    folder_save = "pwd_files_rectangles/no_hole_forward/"
-    folder_save_max = "../../../Intermediate/Max_conc_0_holes_rec.csv"
+    # Create all the different mesh
+    read_and_convert_mesh(file_locations_zero)
+    read_and_convert_mesh(file_locations_five)
+    read_and_convert_mesh(file_locations_twenty)
+    
+    # Solve the zero holes case 
     print("Solving PDE rectangle with zero holes")
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, mesh_folder, folder_save, folder_save_max, seed=seed)
-    
-    ## Five holes case 
     dx_index_list = [1]
-    path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_five_holes.msh"
-    mesh_folder = "../../../Intermediate/Rectangle_five_holes/"
-    read_and_convert_mesh(path_to_msh_file, mesh_folder)
-    folder_save = "pwd_files_rectangles/rectangle_five_holes/"
-    folder_save_max = "../../../Intermediate/Max_conc_5_holes_rec.csv"
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_zero, seed=seed)
+    
+    # Solve the five holes case
     print("Solving PDE rectangle with five holes")
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, mesh_folder, folder_save, folder_save_max, seed=seed)
-    
-    ## 20 holes case
     dx_index_list = [1]
-    path_to_msh_file = "../../Gmsh/Rectangles/Rectangle_20_holes.msh"
-    mesh_folder = "../../../Intermediate/Rectangle_20_holes/"
-    read_and_convert_mesh(path_to_msh_file, mesh_folder)
-    folder_save = "pwd_files_rectangles/rectangle_20_holes/"
-    folder_save_max = "../../../Intermediate/Max_conc_20_holes_rec.csv"
-    print("Solving PDE rectangle with 20 holes")
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, mesh_folder, folder_save, folder_save_max, seed=seed)
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_five, seed=seed)
+    
+    # Solve the 20 holes case
+    print("Solving PDE rectangle with twenty holes")
+    dx_index_list = [1]
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_twenty, seed=seed)
+
 
 # Solving the rectangle case
 param = param_schankenberg(gamma=10, d=100)
-t_end = 5
-n_time_step = 1000
-times_run = 20
+t_end = 0.1
+n_time_step = 100
+times_run = 1
 
 # Run the code with different seeds
 np.random.seed(123)
