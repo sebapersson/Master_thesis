@@ -147,8 +147,6 @@ Point(4) = {R*Sin(theta)*Cos(Pi), R*Sin(theta)*Sin(Pi), 0, lc};
 Point(5) = {R*Sin(theta)*Cos(3*Pi/2), R*Sin(theta)*Sin(3*Pi/2), 0, lc};
 Point(6) = {0, 0, R, lc};
 
-
-
 // Add a hole at the top
 thetaHole = Pi / 9;
 xRot = Pi / 4; yRot = Pi / 4; zRot = Pi / (3*1.35);
