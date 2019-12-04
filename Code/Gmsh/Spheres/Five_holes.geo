@@ -1,4 +1,4 @@
-lc = 0.2;
+lc = 0.05;
 R = 2;
 
 // Rotate x, y, z for a given set of coordinates 
@@ -99,77 +99,46 @@ Macro CreateHole
 	Point(pMean) = {xMean, yMean, zMean, lc};
 	pTop = newp;
 	Point(pTop) = {xTop, yTop, zTop, lc};
-	p5 = newp;
-	Point(p5) = {x5, y5, z5, lc};
-	p6 = newp;
-	Point(p6) = {x6, y6, z6, lc};
-	p7 = newp;
-	Point(p7) = {x7, y7, z7, lc};
-	p8 = newp;
-	Point(p8) = {x8, y8, z8, lc};
 
-	// Add points for making a trail to the top 
-	phiVal = Atan2(y1, x1);
-	thetaVal = Acos(z1 / R);
-	theta1 = thetaVal / 1.2;
-	theta2 = thetaVal / 2;
-	theta3 = thetaVal / 4;
-	x9 = R*Sin(theta1)*Cos(phiVal); y9 = R*Sin(theta1)*Sin(phiVal); z9 = R*Cos(theta1); 
-	x10 = R*Sin(theta2)*Cos(phiVal); y10 = R*Sin(theta2)*Sin(phiVal); z10 = R*Cos(theta2); 
-	x11 = R*Sin(theta3)*Cos(phiVal); y11 = R*Sin(theta3)*Sin(phiVal); z11 = R*Cos(theta3);
-	p9 = newp;
-	Point(p9) = {x9, y9, z9}; 
-	p10 = newp;
-	Point(p10) = {x10, y10, z10}; 
-	p11 = newp;
-	Point(p11) = {x11, y11, z11}; 
 
-	//Add points for making trail to the bottom 
+	//Add bottom point for the bottom part of the circle 
 	phiVal = Atan2(y3, x3);
-	thetaVal = Acos(z3 / R);
-	diff = Pi/2 - thetaVal;
-	theta1 = (thetaVal + diff / 1.2);
-	theta2 = (thetaVal + diff / 2);
-	theta3 = (thetaVal + diff / 3);
-	theta4 = Pi / 2;
-	x12 = R*Sin(theta1)*Cos(phiVal); y12 = R*Sin(theta1)*Sin(phiVal); z12 = R*Cos(theta1); 
-	x13 = R*Sin(theta2)*Cos(phiVal); y13 = R*Sin(theta2)*Sin(phiVal); z13 = R*Cos(theta2); 
-	x14 = R*Sin(theta3)*Cos(phiVal); y14 = R*Sin(theta3)*Sin(phiVal); z14 = R*Cos(theta3);
-	x15 = R*Sin(theta4)*Cos(phiVal); y15 = R*Sin(theta4)*Sin(phiVal); z15 = R*Cos(theta4);
-	p12 = newp;
-	Point(p12) = {x12, y12, z12}; 
-	p13 = newp;
-	Point(p13) = {x13, y13, z13}; 
-	p14 = newp;
-	Point(p14) = {x14, y14, z14};
-	Point(pBot) = {x15, y15, z15}; 
+	theta = Pi / 2;
+	x9 = R*Sin(theta)*Cos(phiVal); y9 = R*Sin(theta)*Sin(phiVal); z9 = R*Cos(theta);
+	Point(pBot1) = {x9, y9, z9, lc}; 
+
+	// Add points for making trail to the bottom for side point 
+	phiVal = Atan2(y4, x4);
+	theta = Pi / 2;
+	x10 = R*Sin(theta)*Cos(phiVal); y10 = R*Sin(theta)*Sin(phiVal); z10 = R*Cos(theta);
+	Point(pBot2) = {x10, y10, z10, lc}; 
 
 
-	// Add circle on the tops, +1000 to avoid conflicts with the bottom circle  
-	l1 = newl + 1000;
+	// Add circle on the tops, +10 to avoid conflicts with the bottom circle  
+	l1 = newl + 20;
 	Circle(l1) = {p1, pMean, p2};
-	l2 = newl + 1000;
+	l2 = newl + 20;
 	Circle(l2) = {p2, pMean, p3};
-	l3 = newl + 1000;
+	l3 = newl + 20;
 	Circle(l3) = {p3, pMean, p4};
-	l4 = newl + 1000;
+	l4 = newl + 20;
 	Circle(l4) = {p4, pMean, p1};
 	// Add lines on the top 
-	l5 = newl + 1000;
-	BSpline(l5) = {p1, p5, pTop};
-	l6 = newl + 1000;
-	BSpline(l6) = {p2, p6, pTop};
-	l7 = newl + 1000;
-	BSpline(l7) = {p3, p7, pTop};
-	l8 = newl + 1000;
-	BSpline(l8) = {p4, p8, pTop};
+	l5 = newl + 20;
+	Circle(l5) = {p1, 1, pTop};
+	l6 = newl + 20;
+	Circle(l6) = {p2, 1, pTop};
+	l7 = newl + 20;
+	Circle(l7) = {p3, 1, pTop};
+	l8 = newl + 20;
+	Circle(l8) = {p4, 1, pTop};
 
-	// For the trail up to the top 
-	l9 = newl + 1000; 
-	BSpline(l9) = {p1, p9, p10, p11, 6};
-	// For the trail to the bottom
-	l10 = newl + 1000;
-	BSpline(l10) = {p3, p12, p13, p14, pBot};
+	// Add the path to the bottom for the circles 
+	l9 = newl + 20;
+	Circle(l9) = {p3, 1, pBot1};	
+	l10 = newl + 20;
+	Circle(l10) = {p4, 1, pBot2}; 
+
 
 	// Add the surfaces 
 	c1 = newreg; 
@@ -196,37 +165,38 @@ Return
 
 // Building the base of the sphere
 theta = Pi / 2.0;
-Point(1) = {0, 0, 0}; 
-Point(2) = {R*Sin(theta)*Cos(0), R*Sin(theta)*Sin(0), 0};
-Point(3) = {R*Sin(theta)*Cos(Pi/2), R*Sin(theta)*Sin(Pi/2), 0};
-Point(4) = {R*Sin(theta)*Cos(Pi), R*Sin(theta)*Sin(Pi), 0};
-Point(5) = {R*Sin(theta)*Cos(3*Pi/2), R*Sin(theta)*Sin(3*Pi/2), 0};
-Point(6) = {0, 0, R};
+Point(1) = {0, 0, 0, lc}; 
+Point(2) = {R*Sin(theta)*Cos(0), R*Sin(theta)*Sin(0), 0, lc};
+Point(3) = {R*Sin(theta)*Cos(Pi/2), R*Sin(theta)*Sin(Pi/2), 0, lc};
+Point(4) = {R*Sin(theta)*Cos(Pi), R*Sin(theta)*Sin(Pi), 0, lc};
+Point(5) = {R*Sin(theta)*Cos(3*Pi/2), R*Sin(theta)*Sin(3*Pi/2), 0, lc};
+Point(6) = {0, 0, R, lc};
 
 
 
 // Add a hole at the top
 theta = Pi / 9;
 theta2 = Pi / 18;
-xRot = Pi / 4; yRot = Pi / 4; zRot = Pi / 3;
+xRot = Pi / 4; yRot = Pi / 4; zRot = Pi / (3*1.35);
 
-si = 101; psi = 2; pBot = 100;
+si = 101; psi = 2; pBot1 = 100; pBot2 = 1100;
 Call CreateHole;
 
 // Add the bottom circle arc 
 Circle(1) = {2, 1, 3};
-Circle(2) = {3, 1, pBot};
-Circle(3) = {pBot, 1, 4};
-Circle(4) = {4, 1, 5};
-Circle(5) = {5, 1, 2};
+Circle(2) = {3, 1, pBot1};
+Circle(3) = {pBot1, 1, pBot2};
+Circle(4) = {pBot2, 1, 4};
+Circle(5) = {4, 1, 5};
+Circle(6) = {5, 1, 2};
 
 // Making arcs that go to the top 
-Circle(6) = {2, 1, 6};
-Circle(7) = {3, 1, 6};
-Circle(8) = {4, 1, 6};
-Circle(9) = {5, 1, 6};
+Circle(7) = {2, 1, 6};
+Circle(8) = {3, 1, 6};
+Circle(9) = {4, 1, 6};
+Circle(10) = {5, 1, 6};
 
 // Adding the second physical line 
-Physical Line(1) = {1, 2, 3, 4, 5};
+Physical Line(1) = {1, 2, 3, 4, 5, 6};
 
 
