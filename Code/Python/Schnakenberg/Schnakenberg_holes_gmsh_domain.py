@@ -362,12 +362,18 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
 
 # Function that will solve the PDE:s for different number of holes for the
 # rectangle case. In order to compare models each model will be run with the
-# same parameter set and time interval 
-def solve_schankenberg_triangles(n_time_step, t_end, param, seed=123):
+# same parameter set and time interval
+# Args:
+#    n_time_step, the number of time-steps when solving the PDE
+#    t_end, the end time when solving the pde
+#    param, an object of parameter class
+#    geometry, a string of the geometry being solved
+#    seed, the seed used for generating the different start-guesses. 
+def solve_schankenberg_triangles(n_time_step, t_end, param, geometry="Rectangles", seed=123):
     # The file locations for each case
-    file_locations_zero = file_locations_class("Zero_holes", "Rectangles")
-    file_locations_five = file_locations_class("Five_holes", "Rectangles")
-    file_locations_twenty = file_locations_class("Twenty_holes", "Rectangles")
+    file_locations_zero = file_locations_class("Zero_holes", geometry)
+    file_locations_five = file_locations_class("Five_holes", geometry)
+    file_locations_twenty = file_locations_class("Twenty_holes", geometry)
     
     # Create all the different mesh
     read_and_convert_mesh(file_locations_zero)
@@ -375,17 +381,17 @@ def solve_schankenberg_triangles(n_time_step, t_end, param, seed=123):
     read_and_convert_mesh(file_locations_twenty)
     
     # Solve the zero holes case 
-    print("Solving PDE rectangle with zero holes")
+    print("Solving PDE " + geometry + " with zero holes")
     dx_index_list = [1]
     solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_zero, seed=seed)
     
     # Solve the five holes case
-    print("Solving PDE rectangle with five holes")
+    print("Solving PDE " + geometry + " with five holes")
     dx_index_list = [1]
     solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_five, seed=seed)
     
     # Solve the 20 holes case
-    print("Solving PDE rectangle with twenty holes")
+    print("Solving PDE " + geometry + " with twenty holes")
     dx_index_list = [1]
     solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_twenty, seed=seed)
 
@@ -394,14 +400,46 @@ def solve_schankenberg_triangles(n_time_step, t_end, param, seed=123):
 # End of functions
 # -----------------------------------------------------------------------------------
 
+# -----------------------------------------------------------------------------------
+# Rectangle case
+# -----------------------------------------------------------------------------------
 # Solving the rectangle case
 param = param_schankenberg(gamma=10, d=100)
-t_end = 0.1
-n_time_step = 100
-times_run = 1
-
+t_end = 5
+n_time_step = 1000
+times_run = 20
+geometry = "Rectangles"
 # Run the code with different seeds
 np.random.seed(123)
 seed_list = np.random.randint(low=1, high=1000, size=times_run)
 for seed in seed_list:
-    solve_schankenberg_triangles(n_time_step, t_end, param, seed=seed)
+    solve_schankenberg_triangles(n_time_step, t_end, param, geometry, seed=seed)
+
+
+# -----------------------------------------------------------------------------------
+# Circle case 
+# -----------------------------------------------------------------------------------
+# Solving the circle case
+param = param_schankenberg(gamma=10, d=100)
+t_end = 5
+n_time_step = 1000
+times_run = 20
+geometry = "Circles"
+# Run the code with different seeds 
+np.random.seed(123)
+seed_list = np.random.randint(low=1, high=1000, size=times_run)
+for seed in seed_list:
+    solve_schankenberg_triangles(n_time_step, t_end, param, geometry, seed=123)
+
+
+# -----------------------------------------------------------------------------------
+# Sphere case 
+# -----------------------------------------------------------------------------------
+# Solving the sphere case
+file_locations = file_locations_class("One_holes", "Spheres")
+read_and_convert_mesh(file_locations)
+dx_index_list = [1]
+solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations)
+
+
+

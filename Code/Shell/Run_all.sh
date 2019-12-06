@@ -43,7 +43,14 @@ conda activate master_thesis
 
 # Do the meshing
 cd ../Gmsh/Rectangles/
-echo "Creating the different meshes"
+echo "Creating the different meshes for rectangles"
+echo ""
+create_mesh Zero_holes.geo
+create_mesh Five_holes.geo
+create_mesh Twenty_holes.geo
+
+cd ../Circles
+echo "Creating the different meshes for circles"
 echo ""
 create_mesh Zero_holes.geo
 create_mesh Five_holes.geo
@@ -57,8 +64,10 @@ echo "Removing files from earlier runs"
 echo ""
 cd Intermediate/
 rm -f -r Rectangles
+rm -f -r Circles
 cd ../Result
 rm -f -r Rectangles_pwd_files
+rm -f -r Circles_pwd_files
 cd ..
 
 # Run the PDe
