@@ -124,13 +124,19 @@ plot_max_conc_data <- function(dir_files, geometry, path_save, plot_data=T)
 
 # Check if the directory to save the figures in exists 
 check_if_dir_exists(path_dir <- "../../Result/Rectangle_figures/")
+check_if_dir_exists(path_dir <- "../../Result/Circle_figures/")
 
 # ---------------------------------------------------------------------------------------------------
-# Working with maximum concentrations rectangles 
+# Working with maximum concentrations rectangles and circles
 # ---------------------------------------------------------------------------------------------------
 dir_files <- "../../Intermediate/Rectangles/"
-geometry = "rectangle"
+geometry <- "rectangle"
 path_save <- "../../Result/Rectangle_figures/Max_conc.pdf"
+plot_max_conc_data(dir_files, geometry, path_save)
+
+dir_files <- "../../Intermediate/Circles/"
+geometry <- "circle"
+path_save <- "../../Result/Circle_figures/"
 plot_max_conc_data(dir_files, geometry, path_save)
 
 # ---------------------------------------------------------------------------------------------------
@@ -150,3 +156,22 @@ plot_t_end_data(path_data, path_save, plot_result = T)
 path_data <- "../../Intermediate/Rectangles/Twenty_holes_files/t_end_data.csv"
 path_save <- "../../Result/Rectangle_figures/Twenty_holes_end.pdf"
 plot_t_end_data(path_data, path_save, plot_result = T)
+
+# ---------------------------------------------------------------------------------------------------
+# Last time-point data circles
+# ---------------------------------------------------------------------------------------------------
+# Zero holes
+path_data <- "../../Intermediate/Circles/Zero_holes_files/t_end_data.csv"
+path_save <- "../../Result/Circle_figures/Zero_holes_end.pdf"
+plot_t_end_data(path_data, path_save, plot_result = T)
+
+# Five holes 
+path_data <- "../../Intermediate/Circles/Five_holes_files/t_end_data.csv"
+path_save <- "../../Result/Circle_figures/Five_holes_end.pdf"
+plot_t_end_data(path_data, path_save, plot_result = T)
+
+# Twenty holes 
+path_data <- "../../Intermediate/Circles/Twenty_holes_files/t_end_data.csv"
+path_save <- "../../Result/Circle_figures/Twenty_holes_end.pdf"
+plot_t_end_data(path_data, path_save, plot_result = T)
+
