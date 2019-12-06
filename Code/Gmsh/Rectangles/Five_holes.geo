@@ -1,10 +1,11 @@
 lc = 0.1;
 
 // Outer rectangle points 
-Point(1) = {-3.0, -3.0, 0, lc};
-Point(2) = {3.0, -3.0, 0, lc};
-Point(3) = {3.0, 3.0, 0, lc};
-Point(4) = {-3.0, 3.0, 0, lc};
+limitRec = 2.2;
+Point(1) = {-limitRec, -limitRec, 0, lc};
+Point(2) = {limitRec, -limitRec, 0, lc};
+Point(3) = {limitRec, limitRec, 0, lc};
+Point(4) = {-limitRec, limitRec, 0, lc};
 
 // Making the points of the circles 
 r = 0.25;

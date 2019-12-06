@@ -1,10 +1,11 @@
 lc = 0.1;
 
 // Outer rectangle points 
-Point(1) = {-3.0, -3.0, 0, lc};
-Point(2) = {3.0, -3.0, 0, lc};
-Point(3) = {3.0, 3.0, 0, lc};
-Point(4) = {-3.0, 3.0, 0, lc};
+limitRec = 2.2;
+Point(1) = {-limitRec, -limitRec, 0, lc};
+Point(2) = {limitRec, -limitRec, 0, lc};
+Point(3) = {limitRec, limitRec, 0, lc};
+Point(4) = {-limitRec, limitRec, 0, lc};
 
 // Lines between the points in the rectangle
 Line(1) = {1, 2};
@@ -126,6 +127,6 @@ Call CreateHole;
 x = -1.05; y = 1.0; s1 = 21; li = 21;
 Call CreateHole;
 
-Plane Surface(1) = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20};
+Plane Surface(1) = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21};
 Physical Surface(1) = {1};
 
