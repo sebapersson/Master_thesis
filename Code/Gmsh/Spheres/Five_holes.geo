@@ -1,4 +1,4 @@
-lc = 0.05;
+lc = 0.01;
 R = 2;
 
 // Rotate x, y, z for a given set of coordinates 
@@ -254,7 +254,38 @@ Circle(31) = {3, 1, 6};
 Circle(32) = {4, 1, 6};
 Circle(33) = {5, 1, 6};
 
-
+// Make arcs that go to the bottom 
+p1 = newp;
+Point(p1) = {0, 0, -R, lc};
+Circle(34) = {pBot11, 1, p1};
+Circle(35) = {pBot12, 1, p1};
+Circle(36) = {pBot13, 1, p1};
+Circle(37) = {pBot14, 1, p1};
+Circle(38) = {pBot15, 1, p1};
+Circle(39) = {pBot21, 1, p1};
+Circle(40) = {pBot22, 1, p1};
+Circle(41) = {pBot23, 1, p1};
+Circle(42) = {pBot24, 1, p1};
+Circle(43) = {pBot25, 1, p1};
+Circle(44) = {pBot31, 1, p1};
+Circle(45) = {pBot32, 1, p1};
+Circle(46) = {pBot33, 1, p1};
+Circle(47) = {pBot34, 1, p1};
+Circle(48) = {pBot35, 1, p1};
+Circle(49) = {pBot41, 1, p1};
+Circle(50) = {pBot42, 1, p1};
+Circle(51) = {pBot43, 1, p1};
+Circle(52) = {pBot44, 1, p1};
+Circle(53) = {pBot45, 1, p1};
+Circle(54) = {pBot51, 1, p1};
+Circle(55) = {pBot52, 1, p1};
+Circle(56) = {pBot53, 1, p1};
+Circle(57) = {pBot54, 1, p1};
+Circle(58) = {2, 1, p1};
+Circle(59) = {3, 1, p1};
+Circle(60) = {4, 1, p1};
+p2 = newp;
+Circle(p2) = {5, 1, p1};
 
 // The curve loops for the surface 
 Curve Loop(1901) = {1896, -1854, 1791, -25};
@@ -296,6 +327,34 @@ Curve Loop(1936) = {23, 33, -1495};
 Curve Loop(1937) = {30, -33, 1};
 Curve Loop(1938) = {1896, -30, 24};
 Curve Loop(1939) = {334, -292, 61};
+Curve Loop(1940) = {53, -52, 22};
+Curve Loop(1941) = {21, 52, -51};
+Curve Loop(1942) = {20, 51, -50};
+Curve Loop(1943) = {50, -49, 19};
+Curve Loop(1944) = {49, -60, 18};
+Curve Loop(1945) = {60, -38, 17};
+Curve Loop(1946) = {38, -37, 16};
+Curve Loop(1947) = {37, -36, 15};
+Curve Loop(1948) = {36, -35, 14};
+Curve Loop(1949) = {35, -34, 13};
+Curve Loop(1950) = {34, -43, 12};
+Curve Loop(1951) = {43, -42, 11};
+Curve Loop(1952) = {42, -41, 10};
+Curve Loop(1953) = {41, -40, 9};
+Curve Loop(1954) = {40, -39, 8};
+Curve Loop(1955) = {39, -48, 7};
+Curve Loop(1956) = {48, -47, 6};
+Curve Loop(1957) = {47, -46, 5};
+Curve Loop(1958) = {46, -45, 4};
+Curve Loop(1959) = {45, -44, 3};
+Curve Loop(1960) = {44, -59, 2};
+Curve Loop(1961) = {59, -57, 28, 29};
+Curve Loop(1962) = {57, -56, 27};
+Curve Loop(1963) = {56, -55, 26};
+Curve Loop(1964) = {55, -54, 25};
+Curve Loop(1965) = {24, 54, -58};
+Curve Loop(1966) = {506, -58, -1};
+Curve Loop(1967) = {506, -53, 23};
 
 // The surfaces
 Surface(1901) = {1901};
@@ -337,9 +396,34 @@ Surface(1936) = {1936};
 Surface(1937) = {1937};
 Surface(1938) = {1938};
 Surface(1939) = {1939};
+Surface(1940) = {1940};
+Surface(1941) = {1941};
+Surface(1942) = {1942};
+Surface(1943) = {1943};
+Surface(1944) = {1944};
+Surface(1945) = {1945};
+Surface(1946) = {1946};
+Surface(1947) = {1947};
+Surface(1948) = {1948};
+Surface(1949) = {1949};
+Surface(1950) = {1950};
+Surface(1951) = {1951};
+Surface(1952) = {1952};
+Surface(1953) = {1953};
+Surface(1954) = {1954};
+Surface(1955) = {1955};
+Surface(1956) = {1956};
+Surface(1957) = {1957};
+Surface(1958) = {1958};
+Surface(1959) = {1959};
+Surface(1960) = {1960};
+Surface(1961) = {1961};
+Surface(1962) = {1962};
+Surface(1963) = {1963};
+Surface(1964) = {1964};
+Surface(1965) = {1965};
+Surface(1966) = {1966};
+Surface(1967) = {1967};
 
-Physical Surface(1) = {1901, 1902, 1903, 1904, 1905, 1906, 1907, 1908, 1909, 1910, 1911, 1912, 1913, 1914, 1915, 1916, 1917, 1918, 1919, 1920, 1921, 1922, 1923, 1924, 1925, 1926, 1927, 1928, 1929, 1930, 1931, 1932, 1933, 1934, 1935, 1936, 1937, 1938, 1339};
-
-
-
-
+// Creating a physical surface 
+Physical Surface(1) = {1901, 1902, 1903, 1904, 1905, 1906, 1907, 1908, 1909, 1910, 1911, 1912, 1913, 1914, 1915, 1916, 1917, 1918, 1919, 1920, 1921, 1922, 1923, 1924, 1925, 1926, 1927, 1928, 1929, 1930, 1931, 1932, 1933, 1934, 1935, 1936, 1937, 1938, 1939, 1940, 1941, 1942, 1943, 1944, 1945, 1946, 1947, 1948, 1949, 1950, 1951, 1952, 1953, 1954, 1955, 1956, 1957, 1958, 1959, 1960, 1961, 1962, 1963, 1964, 1965, 1966, 1967};
