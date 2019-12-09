@@ -136,7 +136,7 @@ plot_max_conc_data(dir_files, geometry, path_save)
 
 dir_files <- "../../Intermediate/Circles/"
 geometry <- "circle"
-path_save <- "../../Result/Circle_figures/"
+path_save <- "../../Result/Circle_figures/Max_conc.pdf"
 plot_max_conc_data(dir_files, geometry, path_save)
 
 # ---------------------------------------------------------------------------------------------------
