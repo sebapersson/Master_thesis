@@ -429,7 +429,7 @@ geometry = "Circles"
 np.random.seed(123)
 seed_list = np.random.randint(low=1, high=1000, size=times_run)
 for seed in seed_list:
-    solve_schankenberg_triangles(n_time_step, t_end, param, geometry, seed=123)
+    solve_schankenberg_triangles(n_time_step, t_end, param, geometry, seed=seed)
 
 
 # -----------------------------------------------------------------------------------
