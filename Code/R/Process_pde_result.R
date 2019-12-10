@@ -55,7 +55,7 @@ plot_t_end_data <- function(path_data, path_save, limit_grid, plot_result=T, n_c
   
   # Viridis will be used for plotting the result 
   p1 <- ggplot(data_to_plot, aes(x, y, fill = u1)) + 
-    geom_tile() + 
+    geom_raster(interpolate = T) + 
     scale_fill_viridis_c() + 
     labs(x = "x", y = "y") + 
     theme(panel.grid.major = element_blank(),
