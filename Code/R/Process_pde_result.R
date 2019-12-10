@@ -20,21 +20,21 @@ cbPalette <- c(
 #   path_save, the path to where the file will be saved
 #   plot_result, if true the result is plotted 
 #   n_cores, the number of cores to use when doing the grid matching
-plot_t_end_data <- function(path_data, path_save, plot_result=T, n_cores=3)
+#   is_circle, true if the geometry is a circle 
+plot_t_end_data <- function(path_data, path_save, plot_result=T, n_cores=3, is_circle=F, h=0.05)
 {
   
   # Read the data and aggregate 
   data <- read_csv(path_data, col_types = cols()) %>% 
     select(-X1) %>%
     group_by(x, y) %>%
-    summarise(u1_med = median(u1), 
+    summarise(u1_med = mean(u1), 
               u1_std = sd(u1), 
-              u2_med = median(u2), 
+              u2_med = mean(u2), 
               u2_std = sd(u2))
   
   
   # Make a grid 
-  h <- 0.01
   x1s <- seq(-3, 3, by = h)
   x2s <- seq(-3, 3, by = h)
   X_pred <- expand.grid(x1s, x2s)
@@ -46,6 +46,12 @@ plot_t_end_data <- function(path_data, path_save, plot_result=T, n_cores=3)
   data_to_plot <- tibble(x = X_pred$Var1, 
                          y = X_pred$Var2, 
                          u1 = u_grid)
+  
+  
+  # If circle set outside region to zero 
+  if(is_circle){
+    data_to_plot[data_to_plot$x^2 + data_to_plot$y^2 > 2.5^2, 3] <- 0
+  }
   
   # Viridis will be used for plotting the result 
   p1 <- ggplot(data_to_plot, aes(x, y, fill = u1)) + 
@@ -105,7 +111,7 @@ plot_max_conc_data <- function(dir_files, geometry, path_save, plot_data=T)
     mutate(n_holes = as.factor(n_holes)) %>%
     select(-X1) %>%
     group_by(time, n_holes) %>%
-    summarise(med = median(Max_conc), 
+    summarise(med = mean(Max_conc), 
               quant_low = quantile(Max_conc, 0.05),
               quant_high = quantile(Max_conc, 0.95)) 
   
@@ -163,15 +169,15 @@ plot_t_end_data(path_data, path_save, plot_result = T)
 # Zero holes
 path_data <- "../../Intermediate/Circles/Zero_holes_files/t_end_data.csv"
 path_save <- "../../Result/Circle_figures/Zero_holes_end.pdf"
-plot_t_end_data(path_data, path_save, plot_result = T)
+plot_t_end_data(path_data, path_save, plot_result = T, is_circle = T, h=0.01)
 
 # Five holes 
 path_data <- "../../Intermediate/Circles/Five_holes_files/t_end_data.csv"
 path_save <- "../../Result/Circle_figures/Five_holes_end.pdf"
-plot_t_end_data(path_data, path_save, plot_result = T)
+plot_t_end_data(path_data, path_save, plot_result = T, is_circle = T)
 
 # Twenty holes 
 path_data <- "../../Intermediate/Circles/Twenty_holes_files/t_end_data.csv"
 path_save <- "../../Result/Circle_figures/Twenty_holes_end.pdf"
-plot_t_end_data(path_data, path_save, plot_result = T)
+plot_t_end_data(path_data, path_save, plot_result = T, is_circle = T, h=0.01)
 
