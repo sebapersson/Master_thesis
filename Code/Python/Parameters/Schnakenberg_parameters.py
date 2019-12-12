@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import os 
 
 '''
 This file will create a plot of the Turing-space for the Schnakenberg reaction 
@@ -45,27 +46,30 @@ a_inf = 0.5 * u0_inf
 b_inf = u0_inf - a_inf
 
 # Plotting the different curves
-plt.plot(b_low, a_low, linewidth=2.5, color = '#0868ac')
-plt.fill_between(b_low, a_low, a_low + 0.03, alpha = 0.4, color = '#0868ac')
-plt.plot(b_25, a_25, linewidth=2.5, color = '#a8ddb5')
-plt.fill_between(b_25, a_25 - 0.03, a_25, alpha = 0.4, color = '#a8ddb5')
-plt.plot(b_50, a_50, linewidth=2.5, color = '#7bccc4')
-plt.fill_between(b_50, a_50 - 0.03, a_50, alpha = 0.4, color = '#7bccc4')
-plt.plot(b_100, a_100, linewidth=2.5, color = '#4eb3d3')
-plt.fill_between(b_100, a_100 - 0.03, a_100, alpha = 0.4, color = '#4eb3d3')
-plt.plot(b_inf, a_inf, linewidth=2.5, color = '#0868ac')
-plt.fill_between(b_inf, a_inf - 0.03, a_inf, alpha = 0.4, color = '#0868ac')
+f = plt.figure(figsize=(9, 6))
+col = '#000000'
+plt.plot(b_low, a_low, linewidth=2.5, color = col)
+plt.fill_between(b_low, a_low, a_low + 0.03, alpha = 0.4, color = col)
+plt.plot(b_25, a_25, linewidth=2.5, color = col)
+plt.fill_between(b_25, a_25 - 0.03, a_25, alpha = 0.4, color = col)
+plt.plot(b_50, a_50, linewidth=2.5, color = col)
+plt.fill_between(b_50, a_50 - 0.03, a_50, alpha = 0.4, color = col)
+plt.plot(b_100, a_100, linewidth=2.5, color = col)
+plt.fill_between(b_100, a_100 - 0.03, a_100, alpha = 0.4, color = col)
 plt.ylim((0, 0.6))
 
-plt.xlabel("a", fontsize = 16)
-plt.ylabel("b", fontsize = 16)
-plt.text(0.55, 0.04, "Lower limit", fontsize = 12)
+plt.xlabel("b", fontsize = 16)
+plt.ylabel("a", fontsize = 16)
+plt.text(0.24, 0.04, "Lower limit", fontsize = 12)
 plt.text(1.5, 0.2, "d = 25", fontsize = 12)
 plt.text(2.1, 0.32, "d = 50", fontsize = 12)
 plt.text(2.75, 0.43, "d = 100", fontsize = 12)
-plt.text(0.60, 0.55, "d = infinity", fontsize = 12)
 
-plt.show()
+# Save the figure to disk
+path_dir = "../../../Result/Param_space/"
+if not os.path.isdir(path_dir):
+    os.mkdir(path_dir)
 
-
+path_save = path_dir + "Schnankenberg_turing_space.pdf"
+f.savefig(path_save, bbox_inches='tight')
 
