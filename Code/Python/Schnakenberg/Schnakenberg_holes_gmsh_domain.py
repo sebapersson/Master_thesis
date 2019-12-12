@@ -22,11 +22,11 @@ class param_schankenberg:
 
 # Class to hold the file-locations for a model
 class file_locations_class:
-    def __init__(self, model_name, geometry):
-        self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + model_name + ".msh"
-        self.mesh_folder = "../../../Intermediate/" + geometry + "/" + model_name + "_mesh/"
-        self.pwd_folder = "../../../Result/" + geometry + "_pwd_files/" + model_name + "/"
-        self.file_save_folder = "../../../Intermediate/" + geometry + "/" + model_name + "_files/"
+    def __init__(self, n_holes, geometry, model):
+        self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
+        self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
+        self.pwd_folder = "../../../Result/" + model + "/" + geometry + "_pwd_files/" + n_holes + "/"
+        self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/" + n_holes + "_files/"
 
 # Class for constructing the initial conditions for each state (python syntax)
 # Note that the pattern formation is sensitive to the noise sigma. 
@@ -236,7 +236,7 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
     file_save = file_locations.file_save_folder + "max_conc.csv"
     # Create folder if not present
     if not os.path.isdir(file_locations.file_save_folder):
-        os.mkdir(file_locations.file_save_folder)
+        os.makedirs(file_locations.file_save_folder)
     # If the file doesn't exist write a header, else append the result 
     if not os.path.isfile(file_save):
         data_to_save.to_csv(file_save)
@@ -371,9 +371,9 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
 #    seed, the seed used for generating the different start-guesses. 
 def solve_schankenberg_triangles(n_time_step, t_end, param, geometry="Rectangles", seed=123):
     # The file locations for each case
-    file_locations_zero = file_locations_class("Zero_holes", geometry)
-    file_locations_five = file_locations_class("Five_holes", geometry)
-    file_locations_twenty = file_locations_class("Twenty_holes", geometry)
+    file_locations_zero = file_locations_class("Zero_holes", geometry, "Schankenberg")
+    file_locations_five = file_locations_class("Five_holes", geometry, "Schankenberg")
+    file_locations_twenty = file_locations_class("Twenty_holes", geometry, "Schankenberg")
     
     # Create all the different mesh
     read_and_convert_mesh(file_locations_zero)
@@ -405,9 +405,9 @@ def solve_schankenberg_triangles(n_time_step, t_end, param, geometry="Rectangles
 # -----------------------------------------------------------------------------------
 # Solving the rectangle case
 param = param_schankenberg(gamma=10, d=100)
-t_end = 5
-n_time_step = 1000
-times_run = 20
+t_end = .1
+n_time_step = 100
+times_run = 1
 geometry = "Rectangles"
 # Run the code with different seeds
 np.random.seed(123)
@@ -421,25 +421,14 @@ for seed in seed_list:
 # -----------------------------------------------------------------------------------
 # Solving the circle case
 param = param_schankenberg(gamma=10, d=100)
-t_end = 5
-n_time_step = 1000
-times_run = 20
+t_end = 0.1
+n_time_step = 100
+times_run = 1
 geometry = "Circles"
 # Run the code with different seeds 
 np.random.seed(123)
 seed_list = np.random.randint(low=1, high=1000, size=times_run)
 for seed in seed_list:
     solve_schankenberg_triangles(n_time_step, t_end, param, geometry, seed=seed)
-
-
-# -----------------------------------------------------------------------------------
-# Sphere case 
-# -----------------------------------------------------------------------------------
-# Solving the sphere case
-file_locations = file_locations_class("One_holes", "Spheres")
-read_and_convert_mesh(file_locations)
-dx_index_list = [1]
-solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations)
-
 
 
