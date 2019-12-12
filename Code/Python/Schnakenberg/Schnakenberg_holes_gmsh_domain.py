@@ -5,6 +5,7 @@ import pandas as pd
 from dolfin import *
 import meshio
 import os
+import sys 
 from tqdm import tqdm
 
 # -----------------------------------------------------------------------------------
@@ -19,6 +20,13 @@ class param_schankenberg:
         self.gamma = gamma
         self.d = d
 
+# Class to hold the parameters for the Gierer-Meinhardt model
+class param_gierer:
+    def __init__(self, a=0.5, b=2.0, gamma=100.0, d=50.0):
+        self.a = a
+        self.b = b
+        self.gamma = gamma
+        self.d = d
 
 # Class to hold the file-locations for a model
 class file_locations_class:
@@ -27,6 +35,7 @@ class file_locations_class:
         self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
         self.pwd_folder = "../../../Result/" + model + "/" + geometry + "_pwd_files/" + n_holes + "/"
         self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/" + n_holes + "_files/"
+        self.model = model
 
 # Class for constructing the initial conditions for each state (python syntax)
 # Note that the pattern formation is sensitive to the noise sigma. 
@@ -103,7 +112,7 @@ def formulate_FEM_equation(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx):
 
 # Function that will formulate the nonlinear system (F) for the Schankenberg model
 # with a specific dx-measure. This approaches uses the explicit Euler method when
-# stepping in time.
+# stepping in time (but note that it is an implicit and explicit mixture).
 # Args:
 #    param, a parameter class object
 #    u_1, u_2, the trial functions
@@ -113,8 +122,7 @@ def formulate_FEM_equation(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx):
 #    dx, the space measure
 # Returns:
 #    The variational formula for forward Euler 
-def formulate_FEM_equation_forward_time(param, u_1, u_2, v_1, v_2, u_n1, u_n2,
-                                        dt_inv, dx):
+def formulate_FEM_schnakenberg(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx):
     
     # Model parameters 
     dt_inv = Constant(dt_inv)
@@ -126,6 +134,33 @@ def formulate_FEM_equation_forward_time(param, u_1, u_2, v_1, v_2, u_n1, u_n2,
     F = dt_inv*(u_1 - u_n1)*v_1*dx - gamma*(a - u_n1 + (u_n1**2)*u_n2)*v_1*dx \
         + inner(grad(u_1), grad(v_1))*dx + dt_inv*(u_2 - u_n2)*v_2*dx \
         - gamma*(b - (u_n1**2)*u_n2)*v_2*dx + d*inner(grad(u_2), grad(v_2))*dx
+    
+    return F
+
+# Function that will formulate the nonlinear system (F) for the Gierer-meinhardt
+# model with a specific dx-measure. This approaches uses the explicit Euler method when
+# stepping in time (but note that it is an implicit and explicit mixture).
+# Args:
+#    param, a parameter class object
+#    u_1, u_2, the trial functions
+#    v_1, v_2, the test functions
+#    u_n1, u_n2, trial functions for previous step
+#    dt_inv, the inverted time
+#    dx, the space measure
+# Returns:
+#    The variational formula for forward Euler 
+def formulate_FEM_gierer(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx):
+    
+    # Model parameters
+    dt_inv = Constant(dt_inv)
+    a = Constant(param.a)
+    b = Constant(param.b)
+    d = Constant(param.d)
+    gamma = Constant(param.gamma)
+    
+    F = dt_inv*(u_1 - u_n1)*v_1*dx - gamma*(a - b * u_n1 + (u_n1**2) / u_n2)*v_1*dx \
+        + inner(grad(u_1), grad(v_1))*dx + dt_inv*(u_2 - u_n2)*v_2*dx \
+        - gamma*(u_n1 ** 2 - u_n2)*v_2*dx + d*inner(grad(u_2), grad(v_2))*dx
     
     return F
 
@@ -289,9 +324,21 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
     # Only display potential errors when solving the PDE-system 
     set_log_level(40)
     
-    # Initial values for the Schankenberg model 
-    u0_1 = param.a + param.b
-    u0_2 = (u0_1 - param.a) / (u0_1**2)
+    # List to hold the current fem-models
+    fem_models = [formulate_FEM_schnakenberg, formulate_FEM_gierer]
+    
+    # Initial values for the model Schankenberg model
+    if file_locations.model == "Schankenberg":
+        u0_1 = param.a + param.b
+        u0_2 = (u0_1 - param.a) / (u0_1**2)
+        formulate_FEM = fem_models[0]
+    elif file_locations.model == "Gierer":
+        u0_1 = (param.a + 1) / param.b
+        u0_2 = u0_1 ** 2
+        formulate_FEM = fem_models[1]
+    else:
+        print("Error, invalid model name")
+        sys.exit(1)
     
     # Step size in t, use dt_inf for numerical precision 
     dt_inv = 1 / (t_end / n_time_step)
@@ -328,14 +375,14 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
     ds = Measure("ds", domain=mesh, subdomain_data=line_domain)
     dS = Measure("dS", domain=mesh, subdomain_data=line_domain)
     
-    # The weak form of the different measures 
+    # Solve the FEM-equations 
     F = 0
     if use_backward == True:
         print("Backward weak form")
         u = Function(V)
         u_1, u_2 = split(u)
         for i in dx_index_list:
-            F += formulate_FEM_equation(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
+            F += formulate_FEM_schnakenberg(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
         
         # Solving the backward system 
         solve_backward_euler(V, F, u, u_n, dt, folder_save, n_time_step)
@@ -344,7 +391,7 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
         print("Solving using the forward Euler method")
         u_1, u_2 = TrialFunctions(V)
         for i in dx_index_list:
-            F += formulate_FEM_equation_forward_time(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
+            F += formulate_FEM(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
         
         # Solve the PDE-system 
         u1, u2 = solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step)
@@ -369,11 +416,11 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
 #    param, an object of parameter class
 #    geometry, a string of the geometry being solved
 #    seed, the seed used for generating the different start-guesses. 
-def solve_schankenberg_triangles(n_time_step, t_end, param, geometry="Rectangles", seed=123):
+def solve_schankenberg_triangles(n_time_step, t_end, param, geometry="Rectangles", model="Schankenberg", seed=123):
     # The file locations for each case
-    file_locations_zero = file_locations_class("Zero_holes", geometry, "Schankenberg")
-    file_locations_five = file_locations_class("Five_holes", geometry, "Schankenberg")
-    file_locations_twenty = file_locations_class("Twenty_holes", geometry, "Schankenberg")
+    file_locations_zero = file_locations_class("Zero_holes", geometry, model)
+    file_locations_five = file_locations_class("Five_holes", geometry, model)
+    file_locations_twenty = file_locations_class("Twenty_holes", geometry, model)
     
     # Create all the different mesh
     read_and_convert_mesh(file_locations_zero)
@@ -405,9 +452,9 @@ def solve_schankenberg_triangles(n_time_step, t_end, param, geometry="Rectangles
 # -----------------------------------------------------------------------------------
 # Solving the rectangle case
 param = param_schankenberg(gamma=10, d=100)
-t_end = .1
-n_time_step = 100
-times_run = 1
+t_end = 5
+n_time_step = 1000
+times_run = 20
 geometry = "Rectangles"
 # Run the code with different seeds
 np.random.seed(123)
@@ -421,9 +468,9 @@ for seed in seed_list:
 # -----------------------------------------------------------------------------------
 # Solving the circle case
 param = param_schankenberg(gamma=10, d=100)
-t_end = 0.1
-n_time_step = 100
-times_run = 1
+t_end = 5
+n_time_step = 1000
+times_run = 20
 geometry = "Circles"
 # Run the code with different seeds 
 np.random.seed(123)
@@ -431,4 +478,19 @@ seed_list = np.random.randint(low=1, high=1000, size=times_run)
 for seed in seed_list:
     solve_schankenberg_triangles(n_time_step, t_end, param, geometry, seed=seed)
 
+
+# -----------------------------------------------------------------------------------
+# Rectangle Gierer 
+# -----------------------------------------------------------------------------------
+# Trying the Gierer-model
+param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
+t_end = 1.5
+n_time_step = 2000
+geometry = "Rectangles"
+times_run = 20
+# Run the code with different seeds 
+np.random.seed(123)
+seed_list = np.random.randint(low=1, high=1000, size=times_run)
+for seed in seed_list:
+    solve_schankenberg_triangles(n_time_step, t_end, param, geometry, "Gierer", seed=seed)
 
