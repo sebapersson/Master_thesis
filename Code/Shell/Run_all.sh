@@ -63,18 +63,20 @@ cd ../../..
 echo "Removing files from earlier runs"
 echo ""
 cd Intermediate/
-rm -f -r Rectangles
-rm -f -r Circles
+rm -f -r Gierer_files
+rm -f -r Schankenberg_files
+rm -f -r Circles_mesh
+rm -f -r Rectangles_mesh
 cd ../Result
-rm -f -r Rectangles_pwd_files
-rm -f -r Circles_pwd_files
+rm -f -r Gierer
+rm -f -r Schankenberg
 cd ..
 
 # Run the PDe
 echo "Solving the PDE:s, this will take a while"
 echo ""
-cd Code/Python/Schnakenberg
-./Schnakenberg_holes_gmsh_domain.py
+cd Code/Python/RD_models
+./Simulate_RD_models.py
 
 # Move back to local root
 cd ../../../
