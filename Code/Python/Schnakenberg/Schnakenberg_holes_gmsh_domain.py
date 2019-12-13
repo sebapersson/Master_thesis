@@ -410,15 +410,17 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
 
 
 # Function that will solve the PDE:s for different number of holes for the
-# rectangle case. In order to compare models each model will be run with the
-# same parameter set and time interval
+# provided geometry case. In order to compare models each model will be run with the
+# same parameter set and time interval. Note that currently only two models are
+# allowed, Gierer and the "Schankenberg" model.
 # Args:
 #    n_time_step, the number of time-steps when solving the PDE
 #    t_end, the end time when solving the pde
 #    param, an object of parameter class
 #    geometry, a string of the geometry being solved
+#    model, a string specifying which model to solve 
 #    seed, the seed used for generating the different start-guesses. 
-def solve_schankenberg_triangles(n_time_step, t_end, param, geometry="Rectangles", model="Schankenberg", seed=123):
+def solve_rd_system(n_time_step, t_end, param, geometry="Rectangles", model="Schankenberg", seed=123):
     # The file locations for each case
     file_locations_zero = file_locations_class("Zero_holes", geometry, model)
     file_locations_five = file_locations_class("Five_holes", geometry, model)
@@ -462,7 +464,7 @@ geometry = "Rectangles"
 np.random.seed(123)
 seed_list = np.random.randint(low=1, high=1000, size=times_run)
 for seed in seed_list:
-    solve_schankenberg_triangles(n_time_step, t_end, param, geometry, seed=seed)
+    solve_rd_system(n_time_step, t_end, param, geometry, seed=seed)
 
 
 # -----------------------------------------------------------------------------------
@@ -478,21 +480,33 @@ geometry = "Circles"
 np.random.seed(123)
 seed_list = np.random.randint(low=1, high=1000, size=times_run)
 for seed in seed_list:
-    solve_schankenberg_triangles(n_time_step, t_end, param, geometry, seed=seed)
+    solve_rd_system(n_time_step, t_end, param, geometry, seed=seed)
 
 
 # -----------------------------------------------------------------------------------
-# Rectangle Gierer 
+# Gierer 
 # -----------------------------------------------------------------------------------
-# Trying the Gierer-model
+# Rectangle case 
 param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
 t_end = 1.5
 n_time_step = 2000
 geometry = "Rectangles"
-times_run = 1
+times_run = 20
 # Run the code with different seeds 
 np.random.seed(123)
 seed_list = np.random.randint(low=1, high=1000, size=times_run)
 for seed in seed_list:
-    solve_schankenberg_triangles(n_time_step, t_end, param, geometry, "Gierer", seed=seed)
+    solve_rd_system(n_time_step, t_end, param, geometry, "Gierer", seed=seed)
+
+# Circle case 
+param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
+t_end = 1.5
+n_time_step = 2000
+geometry = "Circles"
+times_run = 20
+# Run the code with different seeds 
+np.random.seed(123)
+seed_list = np.random.randint(low=1, high=1000, size=times_run)
+for seed in seed_list:
+    solve_rd_system(n_time_step, t_end, param, geometry, "Gierer", seed=seed)
 
