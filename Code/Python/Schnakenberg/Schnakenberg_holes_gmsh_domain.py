@@ -204,10 +204,11 @@ def solve_backward_euler(V, F, u, u_n, dt, file_locations, n_time_step):
             solve(A, dU.vector(), R) # Solver matrix system
             u.assign(u - dU) # Update solution one step    
         
-        # Save current time-step to file 
         _u_1, _u_2, = u.split()
-        vtkfile_u_1 << (_u_1, t)
-        vtkfile_u_2 << (_u_2, t)
+        # Save current time-step to file (only save every tenth step)
+        if n % 10 == 0 or n == 1:
+            vtkfile_u_1 << (_u_1, t)
+            vtkfile_u_2 << (_u_2, t)
         u_n.assign(u)
 
 
@@ -253,10 +254,11 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
         b = assemble(Fb)
         solve(A,  U.vector(), b)        
         
-        # Save current time-step to file 
         _u_1, _u_2, = U.split()
-        vtkfile_u_1 << (_u_1, t)
-        vtkfile_u_2 << (_u_2, t)
+        # Save current time-step to file (only save every tenth step)
+        if n % 10 == 0 or n == 1:
+            vtkfile_u_1 << (_u_1, t)
+            vtkfile_u_2 << (_u_2, t)
         
         # Store the maximum value
         max_conc[n, 0] = t
@@ -487,7 +489,7 @@ param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
 t_end = 1.5
 n_time_step = 2000
 geometry = "Rectangles"
-times_run = 20
+times_run = 1
 # Run the code with different seeds 
 np.random.seed(123)
 seed_list = np.random.randint(low=1, high=1000, size=times_run)
