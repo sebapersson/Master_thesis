@@ -197,20 +197,23 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
 }
 
 # Check if the directory to save the figures in exists 
-check_if_dir_exists(path_dir <- "../../Result/Rectangle_figures/")
-check_if_dir_exists(path_dir <- "../../Result/Circle_figures/")
+check_if_dir_exists(path_dir <- "../../Result/Schankenberg/Rectangle_figures/")
+check_if_dir_exists(path_dir <- "../../Result/Schankenberg/Circle_figures/")
+check_if_dir_exists(path_dir <- "../../Result/Gierer/Rectangle_figures/")
+check_if_dir_exists(path_dir <- "../../Result/Gierer/Circle_figures/")
 
 # ===================================================================================================
-# Working with maximum concentrations rectangles and circles
+# Working with maximum concentrations rectangles and circles 
 # ===================================================================================================
-dir_files <- "../../Intermediate/Rectangles/"
+# Schankenberg-model 
+dir_files <- "../../Intermediate/Schankenberg_files/Rectangles/"
 geometry <- "rectangle"
-path_save <- "../../Result/Rectangle_figures/Max_conc.pdf"
+path_save <- "../../Result/Schankenberg/Rectangle_figures/Max_conc.pdf"
 plot_max_conc_data(dir_files, geometry, path_save)
 
-dir_files <- "../../Intermediate/Circles/"
+dir_files <- "../../Intermediate/Schankenberg_files/Circles/"
 geometry <- "circle"
-path_save <- "../../Result/Circle_figures/Max_conc.pdf"
+path_save <- "../../Result/Schankenberg/Circle_figures/Max_conc.pdf"
 plot_max_conc_data(dir_files, geometry, path_save)
 
 # ---------------------------------------------------------------------------------------------------
@@ -218,58 +221,131 @@ plot_max_conc_data(dir_files, geometry, path_save)
 # ---------------------------------------------------------------------------------------------------
 # Zero holes
 limit_grid <- 2.2
-path_data <- "../../Intermediate/Rectangles/Zero_holes_files/t_end_data.csv"
-path_save <- "../../Result/Rectangle_figures/Zero_holes_end.pdf"
+path_data <- "../../Intermediate/Schankenberg_files/Rectangles/Zero_holes_files/t_end_data.csv"
+path_save <- "../../Result/Schankenberg/Rectangle_figures/Zero_holes_end.pdf"
 plot_t_end_data(path_data, path_save, limit_grid, plot_result = F)
 # Several end-points 
-path_save <- "../../Result/Rectangle_figures/Zero_holes_end_several.pdf"
+path_save <- "../../Result/Schankenberg/Rectangle_figures/Zero_holes_end_several.pdf"
 plot_several_end_times(path_data, path_save, limit_grid)
 
 # Five holes 
-path_data <- "../../Intermediate/Rectangles/Five_holes_files/t_end_data.csv"
-path_save <- "../../Result/Rectangle_figures/Five_holes_end.pdf"
+path_data <- "../../Intermediate/Schankenberg_files/Rectangles/Five_holes_files/t_end_data.csv"
+path_save <- "../../Result/Schankenberg/Rectangle_figures/Five_holes_end.pdf"
 limit_grid <- 2.2
 plot_t_end_data(path_data, path_save, limit_grid, plot_result = F)
 # Several end-points 
-path_save <- "../../Result/Rectangle_figures/Five_holes_end_several.pdf"
+path_save <- "../../Result/Schankenberg/Rectangle_figures/Five_holes_end_several.pdf"
 plot_several_end_times(path_data, path_save, limit_grid)
 
 # Twenty holes 
-path_data <- "../../Intermediate/Rectangles/Twenty_holes_files/t_end_data.csv"
-path_save <- "../../Result/Rectangle_figures/Twenty_holes_end.pdf"
+path_data <- "../../Intermediate/Schankenberg_files/Rectangles/Twenty_holes_files/t_end_data.csv"
+path_save <- "../../Result/Schankenberg/Rectangle_figures/Twenty_holes_end.pdf"
 limit_grid <- 2.2
 plot_t_end_data(path_data, path_save, limit_grid, plot_result = F)
 # Several end-points 
-path_save <- "../../Result/Rectangle_figures/Twenty_holes_end_several.pdf"
+path_save <- "../../Result/Schankenberg/Rectangle_figures/Twenty_holes_end_several.pdf"
 plot_several_end_times(path_data, path_save, limit_grid)
 
 # ---------------------------------------------------------------------------------------------------
 # Last time-point data circles
 # ---------------------------------------------------------------------------------------------------
 # Zero holes
-path_data <- "../../Intermediate/Circles/Zero_holes_files/t_end_data.csv"
-path_save <- "../../Result/Circle_figures/Zero_holes_end.pdf"
+path_data <- "../../Intermediate/Schankenberg_files/Circles/Zero_holes_files/t_end_data.csv"
+path_save <- "../../Result/Schankenberg/Circle_figures/Zero_holes_end.pdf"
 limit_grid <- 2.6
 plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T)
 # Several end-points 
-path_save <- "../../Result/Circle_figures/Zero_holes_end_several.pdf"
+path_save <- "../../Result/Schankenberg/Circle_figures/Zero_holes_end_several.pdf"
 plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
 
 # Five holes 
-path_data <- "../../Intermediate/Circles/Five_holes_files/t_end_data.csv"
-path_save <- "../../Result/Circle_figures/Five_holes_end.pdf"
+path_data <- "../../Intermediate/Schankenberg_files/Circles/Five_holes_files/t_end_data.csv"
+path_save <- "../../Result/Schankenberg/Circle_figures/Five_holes_end.pdf"
 limit_grid <- 2.6
-plot_t_end_data(path_data, path_save, plot_result = F, is_circle = T)
+plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T)
 # Several end-points 
-path_save <- "../../Result/Circle_figures/Five_holes_end_several.pdf"
+path_save <- "../../Result/Schankenberg/Circle_figures/Five_holes_end_several.pdf"
 plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
 
 ## Twenty holes 
-path_data <- "../../Intermediate/Circles/Twenty_holes_files/t_end_data.csv"
-path_save <- "../../Result/Circle_figures/Twenty_holes_end.pdf"
+path_data <- "../../Intermediate/Schankenberg_files/Circles/Twenty_holes_files/t_end_data.csv"
+path_save <- "../../Result/Schankenberg/Circle_figures/Twenty_holes_end.pdf"
 limit_grid <- 2.6
-plot_t_end_data(path_data, path_save, plot_result = F, is_circle = T)
+plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T)
 # Several end-points 
-path_save <- "../../Result/Circle_figures/Twenty_holes_end_several.pdf"
+path_save <- "../../Result/Schankenberg/Circle_figures/Twenty_holes_end_several.pdf"
 plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
   
+
+# ===================================================================================================
+# Working with maximum concentrations rectangles and circles Gierer 
+# ===================================================================================================
+dir_files <- "../../Intermediate/Gierer_files/Rectangles/"
+geometry <- "rectangle"
+path_save <- "../../Result/Gierer/Rectangle_figures/Max_conc.pdf"
+plot_max_conc_data(dir_files, geometry, path_save)
+
+dir_files <- "../../Intermediate/Gierer_files/Circles/"
+geometry <- "circle"
+path_save <- "../../Result/Gierer/Circle_figures/Max_conc.pdf"
+plot_max_conc_data(dir_files, geometry, path_save)
+
+# ---------------------------------------------------------------------------------------------------
+# Last time-point data rectangles Gierer 
+# ---------------------------------------------------------------------------------------------------
+# Zero holes
+limit_grid <- 2.2
+path_data <- "../../Intermediate/Gierer_files/Rectangles/Zero_holes_files/t_end_data.csv"
+path_save <- "../../Result/Gierer/Rectangle_figures/Zero_holes_end.pdf"
+plot_t_end_data(path_data, path_save, limit_grid, plot_result = F)
+# Several end-points 
+path_save <- "../../Result/Gierer/Rectangle_figures/Zero_holes_end_several.pdf"
+plot_several_end_times(path_data, path_save, limit_grid)
+
+# Five holes 
+path_data <- "../../Intermediate/Gierer_files/Rectangles/Five_holes_files/t_end_data.csv"
+path_save <- "../../Result/Gierer/Rectangle_figures/Five_holes_end.pdf"
+limit_grid <- 2.2
+plot_t_end_data(path_data, path_save, limit_grid, plot_result = F)
+# Several end-points 
+path_save <- "../../Result/Gierer/Rectangle_figures/Five_holes_end_several.pdf"
+plot_several_end_times(path_data, path_save, limit_grid)
+
+# Twenty holes 
+path_data <- "../../Intermediate/Gierer_files/Rectangles/Twenty_holes_files/t_end_data.csv"
+path_save <- "../../Result/Gierer/Rectangle_figures/Twenty_holes_end.pdf"
+limit_grid <- 2.2
+plot_t_end_data(path_data, path_save, limit_grid, plot_result = F)
+# Several end-points 
+path_save <- "../../Result/Gierer/Rectangle_figures/Twenty_holes_end_several.pdf"
+plot_several_end_times(path_data, path_save, limit_grid)
+
+# ---------------------------------------------------------------------------------------------------
+# Last time-point data circles Gierer 
+# ---------------------------------------------------------------------------------------------------
+# Zero holes
+path_data <- "../../Intermediate/Gierer_files/Circles/Zero_holes_files/t_end_data.csv"
+path_save <- "../../Result/Gierer/Circle_figures/Zero_holes_end.pdf"
+limit_grid <- 2.6
+plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T)
+# Several end-points 
+path_save <- "../../Result/Gierer/Circle_figures/Zero_holes_end_several.pdf"
+plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
+
+# Five holes 
+path_data <- "../../Intermediate/Gierer_files/Circles/Five_holes_files/t_end_data.csv"
+path_save <- "../../Result/Gierer/Circle_figures/Five_holes_end.pdf"
+limit_grid <- 2.6
+plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T)
+# Several end-points 
+path_save <- "../../Result/Gierer/Circle_figures/Five_holes_end_several.pdf"
+plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
+
+## Twenty holes 
+path_data <- "../../Intermediate/Gierer_files/Circles/Twenty_holes_files/t_end_data.csv"
+path_save <- "../../Result/Gierer/Circle_figures/Twenty_holes_end.pdf"
+limit_grid <- 2.6
+plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T)
+# Several end-points 
+path_save <- "../../Result/Gierer/Circle_figures/Twenty_holes_end_several.pdf"
+plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
