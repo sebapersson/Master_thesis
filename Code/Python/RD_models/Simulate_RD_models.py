@@ -35,9 +35,9 @@ class ic(UserExpression):
         
     def eval(self,values,x):
         if self.controlled == True:
-            if (x[0] - self.x_mid)**2 + (x[1] - self.y_mid)**2 < self.r_circle:
-                values[0] = self.u0_1 + np.random.normal(scale = self.sigma)
-                values[1] = self.u0_2 + np.random.normal(scale = self.sigma)
+            if (x[0] - self.x_mid)**2 + (x[1] - self.y_mid)**2 < self.r_circle**2:
+                values[0] = self.u0_1 + np.absolute(np.random.normal(scale = self.sigma))
+                values[1] = self.u0_2 + np.absolute(np.random.normal(scale = self.sigma))
             else:
                 values[0] = self.u0_1
                 values[1] = self.u0_2
@@ -67,13 +67,21 @@ class param_gierer:
 
 # Class to hold the file-locations for a model
 class file_locations_class:
-    def __init__(self, n_holes, geometry, model):
-        self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
-        self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
-        self.pwd_folder = "../../../Result/" + model + "/" + geometry + "_pwd_files/" + n_holes + "/"
-        self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/" + n_holes + "_files/"
-        self.model = model
-
+    def __init__(self, n_holes, geometry, model, controlled_inital=False):
+        # If the initial values aren't controlled
+        if controlled_inital == False:
+            self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
+            self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
+            self.pwd_folder = "../../../Result/" + model + "/" + geometry + "_pwd_files/" + n_holes + "/"
+            self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/" + n_holes + "_files/"
+            self.model = model
+        # Rename save-folders if initial values are controlled 
+        elif controlled_inital == True:
+            self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
+            self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
+            self.pwd_folder = "../../../Result/" + model + "/" + geometry + "_pwd_files/" + n_holes + "_init_controlled/"
+            self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "_init_controlled/" + n_holes + "_files/"
+            self.model = model
 
 # -----------------------------------------------------------------------------------
 # Start of functions 
@@ -386,7 +394,7 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
     
     # Expression for the initial conditions 
     u0_exp = ic(u0_1 = u0_1, u0_2 = u0_2, sigma = 0.05,
-                controlled=ic_par.controlled, x_mid=ic.par.x_mid, y_mid=ic_par.y_mid,
+                controlled=ic_par.controlled, x_mid=ic_par.x_mid, y_mid=ic_par.y_mid,
                 r_circle=ic_par.r_circle, element = V.ufl_element())
     
     # Test functions, and initial values 
@@ -449,37 +457,47 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
 #    n_time_step, the number of time-steps when solving the PDE
 #    t_end, the end time when solving the pde
 #    param, an object of parameter class
+#    ic_par, the parameters for the initial value (can be a list for each number of holes)
 #    geometry, a string of the geometry being solved
-#    model, a string specifying which model to solve 
+#    model, a string specifying which model to solve
+#    ic_controlled, whatever or not the initial values are controlled (false by default)
 #    seed, the seed used for generating the different start-guesses. 
-def solve_rd_system(n_time_step, t_end, param, geometry="Rectangles", model="Schankenberg", seed=123):
+def solve_rd_system(n_time_step, t_end, param, ic_par=init_val_param(), geometry="Rectangles", model="Schankenberg", ic_controlled=False, seed=123):
+    
     # The file locations for each case
-    file_locations_zero = file_locations_class("Zero_holes", geometry, model)
-    file_locations_five = file_locations_class("Five_holes", geometry, model)
-    file_locations_twenty = file_locations_class("Twenty_holes", geometry, model)
+    file_locations_zero = file_locations_class("Zero_holes", geometry, model, ic_controlled)
+    file_locations_five = file_locations_class("Five_holes", geometry, model, ic_controlled)
+    file_locations_twenty = file_locations_class("Twenty_holes", geometry, model, ic_controlled)
     
     # Create all the different mesh
     read_and_convert_mesh(file_locations_zero)
     read_and_convert_mesh(file_locations_five)
     read_and_convert_mesh(file_locations_twenty)
     
-    # The initial parameters (no disturbance)
-    ic_par = init_val_param()
+    # Adapt unique initial conditions if ic_controlled is a list
+    if isinstance(ic_par, list):
+        ic_par_zero = ic_par[0]
+        ic_par_five = ic_par[1]
+        ic_par_twenty = ic_par[2]
+    else:
+        ic_par_zero = ic_par
+        ic_par_five = ic_par
+        ic_par_twenty = ic_par
     
     # Solve the zero holes case 
     print("Solving PDE " + geometry + " with zero holes")
     dx_index_list = [1]
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_zero, ic_par, seed=seed)
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_zero, ic_par_zero, seed=seed)
     
     # Solve the five holes case
     print("Solving PDE " + geometry + " with five holes")
     dx_index_list = [1]
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, ic_par, file_locations_five, seed=seed)
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_five, ic_par_five, seed=seed)
     
     # Solve the 20 holes case
     print("Solving PDE " + geometry + " with twenty holes")
     dx_index_list = [1]
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_twenty, ic_par, seed=seed)
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_twenty, ic_par_twenty, seed=seed)
 
 
 # Run the actual analysis 
