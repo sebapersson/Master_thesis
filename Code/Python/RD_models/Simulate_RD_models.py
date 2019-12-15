@@ -12,6 +12,43 @@ from tqdm import tqdm
 # Classes for solving the problem
 # -----------------------------------------------------------------------------------
 
+# Class for holding the initial value parameters
+class init_val_param:
+    def __init__(self, controlled=False, x_mid=0, y_mid=0, r_circle=0.25):
+        self.controlled = controlled
+        self.x_mid = x_mid
+        self.y_mid = y_mid
+        self.r_circle = r_circle
+
+# Class for constructing the initial conditions for each state (python syntax)
+# Note that the pattern formation is sensitive to the noise sigma. 
+class ic(UserExpression):
+    def __init__(self, *args, **kwargs):
+        self.u0_1 = kwargs.pop('u0_1')
+        self.u0_2 = kwargs.pop('u0_2')
+        self.sigma = kwargs.pop('sigma')
+        self.controlled = kwargs.pop('controlled')
+        self.x_mid = kwargs.pop('x_mid')
+        self.y_mid = kwargs.pop('y_mid')
+        self.r_circle = kwargs.pop('r_circle')
+        super(ic, self).__init__(*args, **kwargs)
+        
+    def eval(self,values,x):
+        if self.controlled == True:
+            if (x[0] - self.x_mid)**2 + (x[1] - self.y_mid)**2 < self.r_circle:
+                values[0] = self.u0_1 + np.random.normal(scale = self.sigma)
+                values[1] = self.u0_2 + np.random.normal(scale = self.sigma)
+            else:
+                values[0] = self.u0_1
+                values[1] = self.u0_2
+        else:
+            values[0] = self.u0_1 + np.random.normal(scale = self.sigma)
+            values[1] = self.u0_2 + np.random.normal(scale = self.sigma)
+        
+    def value_shape(self):
+        return(2,)
+
+
 # Class to hold the parameters for the Schankenberg model 
 class param_schankenberg:
     def __init__(self, a=0.2, b=2.0, gamma=100.0, d=50.0):
@@ -37,21 +74,6 @@ class file_locations_class:
         self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/" + n_holes + "_files/"
         self.model = model
 
-# Class for constructing the initial conditions for each state (python syntax)
-# Note that the pattern formation is sensitive to the noise sigma. 
-class ic(UserExpression):
-    def __init__(self, *args, **kwargs):
-        self.u0_1 = kwargs.pop('u0_1')
-        self.u0_2 = kwargs.pop('u0_2')
-        self.sigma = kwargs.pop('sigma')
-        super(ic, self).__init__(*args, **kwargs)
-        
-    def eval(self,values,x):
-        values[0] = self.u0_1 + np.random.normal(scale = self.sigma)
-        values[1] = self.u0_2 + np.random.normal(scale = self.sigma)
-        
-    def value_shape(self):
-        return(2,)
 
 # -----------------------------------------------------------------------------------
 # Start of functions 
@@ -264,6 +286,13 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
         max_conc[n, 0] = t
         max_conc[n, 1] = np.max(_u_1.vector().get_local())
         
+        # Sanity check solution
+        min_u1 = np.min(_u_1.vector().get_local())
+        min_u2 = np.min(_u_2.vector().get_local())
+        if min_u1 < 0 or min_u2 < 0:
+            print("Error, negative concentration")
+            sys.exit(1)
+        
         # Update previous solution 
         u_n.assign(U)
         
@@ -292,7 +321,8 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
 #     t_end, the end time when solving the system
 #     n_time_step, the number of time steps
 #     dx_index_list, a list of which space surface measures to solve the PDE over
-#     file_locations, a class object containing all the file locations for saving the result 
+#     file_locations, a class object containing all the file locations for saving the result
+#     ic_parameters, class object containing the parameters for initial conditions.
 #     use_backward, if true the backward Euler method is used for solving the problem,
 #         by default explicit Euler is desired.
 #     seed, the seed to use when generating the random initial states
@@ -301,7 +331,7 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
 #     max_conc-file, a csv-file containing the maximum concentration at each time step
 #     t_end-file, a csv-file containing the concentrations at the end time. Note that upon running the function
 #         several times the function will append already existing csv-files. 
-def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations, use_backward=False, seed=123):
+def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, use_backward=False, seed=123):
     
     # Setting the seed to reproduce the result 
     np.random.seed(seed)
@@ -355,7 +385,9 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
     u_n = Function(V)
     
     # Expression for the initial conditions 
-    u0_exp = ic(u0_1 = u0_1, u0_2 = u0_2, sigma = 0.05, element = V.ufl_element())
+    u0_exp = ic(u0_1 = u0_1, u0_2 = u0_2, sigma = 0.05,
+                controlled=ic_par.controlled, x_mid=ic.par.x_mid, y_mid=ic_par.y_mid,
+                r_circle=ic_par.r_circle, element = V.ufl_element())
     
     # Test functions, and initial values 
     v_1, v_2 = TestFunctions(V)
@@ -431,82 +463,87 @@ def solve_rd_system(n_time_step, t_end, param, geometry="Rectangles", model="Sch
     read_and_convert_mesh(file_locations_five)
     read_and_convert_mesh(file_locations_twenty)
     
+    # The initial parameters (no disturbance)
+    ic_par = init_val_param()
+    
     # Solve the zero holes case 
     print("Solving PDE " + geometry + " with zero holes")
     dx_index_list = [1]
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_zero, seed=seed)
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_zero, ic_par, seed=seed)
     
     # Solve the five holes case
     print("Solving PDE " + geometry + " with five holes")
     dx_index_list = [1]
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_five, seed=seed)
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, ic_par, file_locations_five, seed=seed)
     
     # Solve the 20 holes case
     print("Solving PDE " + geometry + " with twenty holes")
     dx_index_list = [1]
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_twenty, seed=seed)
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_twenty, ic_par, seed=seed)
 
 
-# -----------------------------------------------------------------------------------
-# End of functions
-# -----------------------------------------------------------------------------------
-
-# -----------------------------------------------------------------------------------
-# Rectangle case
-# -----------------------------------------------------------------------------------
-# Solving the rectangle case
-param = param_schankenberg(gamma=10, d=100)
-t_end = 5
-n_time_step = 1000
-times_run = 20
-geometry = "Rectangles"
-# Run the code with different seeds
-np.random.seed(123)
-seed_list = np.random.randint(low=1, high=1000, size=times_run)
-for seed in seed_list:
-    solve_rd_system(n_time_step, t_end, param, geometry, seed=seed)
-
-
-# -----------------------------------------------------------------------------------
-# Circle case 
-# -----------------------------------------------------------------------------------
-# Solving the circle case
-param = param_schankenberg(gamma=10, d=100)
-t_end = 5
-n_time_step = 1000
-times_run = 20
-geometry = "Circles"
-# Run the code with different seeds 
-np.random.seed(123)
-seed_list = np.random.randint(low=1, high=1000, size=times_run)
-for seed in seed_list:
-    solve_rd_system(n_time_step, t_end, param, geometry, seed=seed)
-
-
-# -----------------------------------------------------------------------------------
-# Gierer 
-# -----------------------------------------------------------------------------------
-# Rectangle case 
-param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
-t_end = 1.5
-n_time_step = 2000
-geometry = "Rectangles"
-times_run = 20
-# Run the code with different seeds 
-np.random.seed(123)
-seed_list = np.random.randint(low=1, high=1000, size=times_run)
-for seed in seed_list:
-    solve_rd_system(n_time_step, t_end, param, geometry, "Gierer", seed=seed)
-
-# Circle case 
-param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
-t_end = 1.5
-n_time_step = 2000
-geometry = "Circles"
-times_run = 20
-# Run the code with different seeds 
-np.random.seed(123)
-seed_list = np.random.randint(low=1, high=1000, size=times_run)
-for seed in seed_list:
-    solve_rd_system(n_time_step, t_end, param, geometry, "Gierer", seed=seed)
+# Run the actual analysis 
+def main():
+    # -----------------------------------------------------------------------------------
+    # Rectangle case
+    # -----------------------------------------------------------------------------------
+    # Solving the rectangle case
+    param = param_schankenberg(gamma=10, d=100)
+    t_end = 5
+    n_time_step = 1000
+    times_run = 20
+    geometry = "Rectangles"
+    # Run the code with different seeds
+    np.random.seed(123)
+    seed_list = np.random.randint(low=1, high=1000, size=times_run)
+    for seed in seed_list:
+        solve_rd_system(n_time_step, t_end, param, geometry, seed=seed)
+        
+        
+    # -----------------------------------------------------------------------------------
+    # Circle case 
+    # -----------------------------------------------------------------------------------
+    # Solving the circle case
+    param = param_schankenberg(gamma=10, d=100)
+    t_end = 5
+    n_time_step = 1000
+    times_run = 20
+    geometry = "Circles"
+    # Run the code with different seeds 
+    np.random.seed(123)
+    seed_list = np.random.randint(low=1, high=1000, size=times_run)
+    for seed in seed_list:
+        solve_rd_system(n_time_step, t_end, param, geometry, seed=seed)
+    
+    
+    # -----------------------------------------------------------------------------------
+    # Gierer 
+    # -----------------------------------------------------------------------------------
+    print("Gierer model")
+    # Rectangle case 
+    param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
+    t_end = 1.5
+    n_time_step = 2000
+    geometry = "Rectangles"
+    times_run = 20
+    # Run the code with different seeds 
+    np.random.seed(123)
+    seed_list = np.random.randint(low=1, high=1000, size=times_run)
+    for seed in seed_list:
+        solve_rd_system(n_time_step, t_end, param, geometry, "Gierer", seed=seed)
+    
+    
+    # Circle case 
+    param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
+    t_end = 1.5
+    n_time_step = 2000
+    geometry = "Circles"
+    times_run = 20
+    # Run the code with different seeds 
+    np.random.seed(123)
+    seed_list = np.random.randint(low=1, high=1000, size=times_run)
+    for seed in seed_list:
+        solve_rd_system(n_time_step, t_end, param, geometry, "Gierer", seed=seed)
+    
+    return 0
 
