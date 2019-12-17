@@ -49,21 +49,22 @@ b_inf = u0_inf - a_inf
 f = plt.figure(figsize=(9, 6))
 col = '#000000'
 plt.plot(b_low, a_low, linewidth=2.5, color = col)
-plt.fill_between(b_low, a_low, a_low + 0.03, alpha = 0.4, color = col)
+plt.fill_between(b_low, a_low, a_low + 0.03, alpha = 0.2, color = col)
+plt.plot(b_low, a_low, linewidth=2.5, color = '#d73027', linestyle='--')
 plt.plot(b_25, a_25, linewidth=2.5, color = col)
-plt.fill_between(b_25, a_25 - 0.03, a_25, alpha = 0.4, color = col)
+plt.fill_between(b_25, a_25 - 0.03, a_25, alpha = 0.2, color = col)
 plt.plot(b_50, a_50, linewidth=2.5, color = col)
-plt.fill_between(b_50, a_50 - 0.03, a_50, alpha = 0.4, color = col)
+plt.fill_between(b_50, a_50 - 0.03, a_50, alpha = 0.2, color = col)
 plt.plot(b_100, a_100, linewidth=2.5, color = col)
-plt.fill_between(b_100, a_100 - 0.03, a_100, alpha = 0.4, color = col)
+plt.fill_between(b_100, a_100 - 0.03, a_100, alpha = 0.2, color = col)
 plt.ylim((0, 0.6))
 
 plt.xlabel("b", fontsize = 16)
 plt.ylabel("a", fontsize = 16)
-plt.text(0.24, 0.04, "Lower limit", fontsize = 12)
+plt.text(0.24, 0.035, "Lower limit", fontsize = 12)
 plt.text(1.5, 0.2, "d = 25", fontsize = 12)
-plt.text(2.1, 0.32, "d = 50", fontsize = 12)
-plt.text(2.75, 0.43, "d = 100", fontsize = 12)
+plt.text(2.06, 0.29, "d = 50", fontsize = 12)
+plt.text(2.83 + 0.015, 0.40 + 0.01, "d = 100", fontsize = 12)
 
 # Save the figure to disk
 path_dir = "../../../Result/Param_space/"
