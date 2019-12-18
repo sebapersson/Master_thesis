@@ -12,13 +12,15 @@ from tqdm import tqdm
 # Classes for solving the problem
 # -----------------------------------------------------------------------------------
 
-# Class for holding the initial value parameters
+# Class for holding the initial value parameters, if geom is equal to rectangle
+# a quadratic rectangle will be disturbed with middle x_mid, y_mid and side length r_circle*2
 class init_val_param:
-    def __init__(self, controlled=False, x_mid=0, y_mid=0, r_circle=0.25):
+    def __init__(self, controlled=False, geom="Circle", x_mid=0, y_mid=0, r_circle=0.25):
         self.controlled = controlled
         self.x_mid = x_mid
         self.y_mid = y_mid
         self.r_circle = r_circle
+        self.geom = geom
 
 # Class for constructing the initial conditions for each state (python syntax)
 # Note that the pattern formation is sensitive to the noise sigma. 
@@ -27,20 +29,31 @@ class ic(UserExpression):
         self.u0_1 = kwargs.pop('u0_1')
         self.u0_2 = kwargs.pop('u0_2')
         self.sigma = kwargs.pop('sigma')
-        self.controlled = kwargs.pop('controlled')
-        self.x_mid = kwargs.pop('x_mid')
-        self.y_mid = kwargs.pop('y_mid')
-        self.r_circle = kwargs.pop('r_circle')
+        self.init_par = kwargs.pop('init_param')
         super(ic, self).__init__(*args, **kwargs)
         
     def eval(self,values,x):
-        if self.controlled == True:
-            if (x[0] - self.x_mid)**2 + (x[1] - self.y_mid)**2 < self.r_circle**2:
+        r = self.init_par.r_circle
+        x_mid = self.init_par.x_mid; y_mid = self.init_par.y_mid
+        if self.init_par.geom == "Circle" and self.init_par.controlled == True:
+            if (x[0] - x_mid)**2 + (x[1] - y_mid)**2 < r**2:
                 values[0] = self.u0_1 + np.absolute(np.random.normal(scale = self.sigma))
                 values[1] = self.u0_2 + np.absolute(np.random.normal(scale = self.sigma))
             else:
                 values[0] = self.u0_1
                 values[1] = self.u0_2
+        # The case the disturbance is a rectangle 
+        elif self.init_par.controlled == True and self.init_par.geom == "Rectangles":
+            # Extreme values of the rectangle
+            ext_val1 = -r
+            ext_val2 = r
+            if (x[0] > ext_val1 and x[0] < ext_val2) and (x[1] > ext_val1 and x[1] < ext_val2):
+                values[0] = 1.1 * self.u0_1 
+                values[1] = 1.1 * self.u0_2 
+            else:
+                values[0] = self.u0_1
+                values[1] = self.u0_2
+        # Case the entire region will be disturbed 
         else:
             values[0] = self.u0_1 + np.random.normal(scale = self.sigma)
             values[1] = self.u0_2 + np.random.normal(scale = self.sigma)
@@ -65,23 +78,33 @@ class param_gierer:
         self.gamma = gamma
         self.d = d
 
-# Class to hold the file-locations for a model
+# Class to hold the file-locations for a model, 
 class file_locations_class:
-    def __init__(self, n_holes, geometry, model, controlled_inital=False):
+    def __init__(self, n_holes, geometry, model, controlled_inital=False, find_mesh_size=False, lc="0"):
         # If the initial values aren't controlled
-        if controlled_inital == False:
+        if controlled_inital == False and find_mesh_size == False:
             self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
             self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
             self.pwd_folder = "../../../Result/" + model + "/" + geometry + "_pwd_files/" + n_holes + "/"
             self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/" + n_holes + "_files/"
             self.model = model
         # Rename save-folders if initial values are controlled 
-        elif controlled_inital == True:
+        elif controlled_inital == True and find_mesh_size == False:
             self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
             self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
             self.pwd_folder = "../../../Result/" + model + "/" + geometry + "_pwd_files/" + n_holes + "_init_controlled/"
             self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "_init_controlled/" + n_holes + "_files/"
             self.model = model
+        # Rename save-folders if the aim is to find the mesh-size
+        elif find_mesh_size == True:
+            self.path_to_msh_file = "../../Gmsh/" + geometry + "/Rec_lc" + lc + ".msh"
+            self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + "Find_mesh_size_lc" + lc + "_mesh/"
+            self.pwd_folder = "../../../Result/" + model + "/" + geometry + "_pwd_files/" + "Find_mesh_size_lc_" + lc + "/"
+            self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "_find_mesh_size_lc/" + lc + "_files/"
+            self.model = model
+        else:
+            print("Error, improper file-locations entry")
+            sys.exit(1)
 
 # -----------------------------------------------------------------------------------
 # Start of functions 
@@ -339,7 +362,8 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
 #     max_conc-file, a csv-file containing the maximum concentration at each time step
 #     t_end-file, a csv-file containing the concentrations at the end time. Note that upon running the function
 #         several times the function will append already existing csv-files. 
-def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, use_backward=False, seed=123):
+def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations, ic_par,
+                                        use_backward=False, seed=123):
     
     # Setting the seed to reproduce the result 
     np.random.seed(seed)
@@ -394,8 +418,7 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
     
     # Expression for the initial conditions 
     u0_exp = ic(u0_1 = u0_1, u0_2 = u0_2, sigma = 0.05,
-                controlled=ic_par.controlled, x_mid=ic_par.x_mid, y_mid=ic_par.y_mid,
-                r_circle=ic_par.r_circle, element = V.ufl_element())
+                init_param=ic_par, element = V.ufl_element())
     
     # Test functions, and initial values 
     v_1, v_2 = TestFunctions(V)
@@ -449,6 +472,26 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
     
 
 
+# Function that will run the find-mesh size experiment by solving the PDE on different
+# size meshes.
+# Args:
+#    lc_list, a list of the lc-values, note 01 -> 0.1, 006 -> 0.06
+#    model, a string of which model is used
+#    geometry, a string (circles or rectangles)
+#    n_time_step, the number of time-steps
+#    t_end, the end time
+#    param, parameters for the correct model 
+def find_mesh_size(lc_list, model, geometry, n_time_step, t_end, param):
+    # General arguments
+    dx = [1]
+    init_param = init_val_param(controlled=True, geom=geometry, r_circle=0.25)
+    # Loop through the lc-list
+    for lc in lc_list:
+        file_loc = file_locations_class("Zero", geometry, model, find_mesh_size=True, lc=lc)
+        read_and_convert_mesh(file_loc)
+        solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx, file_loc, init_param)
+
+
 # Function that will solve the PDE:s for different number of holes for the
 # provided geometry case. In order to compare models each model will be run with the
 # same parameter set and time interval. Note that currently only two models are
@@ -487,17 +530,20 @@ def solve_rd_system(n_time_step, t_end, param, ic_par=init_val_param(), geometry
     # Solve the zero holes case 
     print("Solving PDE " + geometry + " with zero holes")
     dx_index_list = [1]
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_zero, ic_par_zero, seed=seed)
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list,
+                                        file_locations_zero, ic_par_zero, seed=seed)
     
     # Solve the five holes case
     print("Solving PDE " + geometry + " with five holes")
     dx_index_list = [1]
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_five, ic_par_five, seed=seed)
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list,
+                                        file_locations_five, ic_par_five, seed=seed)
     
     # Solve the 20 holes case
     print("Solving PDE " + geometry + " with twenty holes")
     dx_index_list = [1]
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations_twenty, ic_par_twenty, seed=seed)
+    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list,
+                                        file_locations_twenty, ic_par_twenty, seed=seed)
 
 
 # Run the actual analysis 
@@ -516,8 +562,7 @@ def main():
     seed_list = np.random.randint(low=1, high=1000, size=times_run)
     for seed in seed_list:
         solve_rd_system(n_time_step, t_end, param, geometry, seed=seed)
-        
-        
+    
     # -----------------------------------------------------------------------------------
     # Circle case 
     # -----------------------------------------------------------------------------------
@@ -564,4 +609,17 @@ def main():
         solve_rd_system(n_time_step, t_end, param, geometry, "Gierer", seed=seed)
     
     return 0
+
+
+# Run the cases with controlling the mesh size
+# Schankenberg model 
+lc_list = ["01", "008", "006"]; geometry = "Rectangles"
+n_time_step = 1500; t_end = 5.0; param = param_schankenberg(gamma=10, d=100)
+#find_mesh_size(lc_list, "Schankenberg", geometry, n_time_step, t_end, param)
+
+# Gierer model 
+lc_list = ["01", "008", "006"]; geometry = "Rectangles"
+n_time_step = 2000; t_end = 2.5
+param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
+find_mesh_size(lc_list, "Gierer", geometry, n_time_step, t_end, param)
 
