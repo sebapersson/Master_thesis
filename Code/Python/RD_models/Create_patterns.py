@@ -1,55 +1,56 @@
 #!/usr/bin/env python
 from Simulate_RD_models import *
 
-# This file aims to try to create a pattern at a certain location by creating an extra strong
-# disturbance towards a new bud-site.
+# ------------------------------------------------------------------------------
+# Check for optimal mesh-size 
+# ------------------------------------------------------------------------------
+# Find mesh size Schankenberg
+lc_list = ["0.1", "0.06", "0.08"];
+n_holes_list = ["Zero_holes", "Five_holes", "Twenty_holes"]
+t_opt = t_opt(7.5, 1500)
+param = param_schankenberg(gamma=10, d=100)
+find_mesh_size(lc_list, n_holes_list, "Schankenberg", "Rectangles", n_time_step, t_end, param)
+find_mesh_size(lc_list, n_holes_list, "Schankenberg", "Circles", n_time_step, t_end, param)
 
+# Find the mesh size Gierer 
+t_opt = t_opt(1.5, 2000)
+param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
+find_mesh_size(lc_list, n_holes_list, "Gierer", "Rectangles", n_time_step, t_end, param)
+find_mesh_size(lc_list, n_holes_list, "Gierer", "Circles", n_time_step, t_end, param)
+
+# ------------------------------------------------------------------------------
+# Running simulations without a specific disturbance in the steady state
+# ------------------------------------------------------------------------------
+# Schankenberg
+param = param_schankenberg(gamma=10, d=100)
+t_opt = t_opt(7.5, 2000)
+run_rd_sim(param, t_opt, model="Schankenberg", geom="Rectangles", times_run=40)
+run_rd_sim(param, t_opt, model="Schankenberg", geom="Circles", times_run=40)
+
+# Gierer
+param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
+t_opt = t_opt(1.5, 2000)
+run_rd_sim(param, t_opt, model="Gierer", geom="Rectangles", times_run=40)
+run_rd_sim(param, t_opt, model="Gierer", geom="Circles", times_run=40)
+
+# ------------------------------------------------------------------------------
+# Running simulations with a controlled disturbance steady state 
+# ------------------------------------------------------------------------------
 # The initial controlled conditions 
 ic_par_zero = init_val_param(True, 0, 0, 1.0)
 ic_par_five = init_val_param(True, -0.15, 0.5, 0.25)
 ic_par_twenty = init_val_param(True, 0.55, 1.05, 0.25)
 ic_list = [ic_par_zero, ic_par_five, ic_par_twenty]
 
-# The seed list for each case
-np.random.seed(123)
-times_run = 10
-seed_list = np.random.randint(low=1, high=1000, size=times_run)
-
-# ------------------------------------------------------------------------
-# Schankenberg-model
-# ------------------------------------------------------------------------
+# Schankenberg
 param = param_schankenberg(gamma=10, d=100)
-t_end = 7.5
-n_time_step = 1500
+t_opt = t_opt(7.5, 2000)
+run_rd_sim(param, t_opt, model="Schankenberg", geom="Rectangles", ic_list=ic_list, times_run=40)
+run_rd_sim(param, t_opt, model="Schankenberg", geom="Circles", ic_list=ic_list, times_run=40)
 
-# Solve for the different geometries 
-geometry = "Rectangles"
-for seed in seed_list:
-    solve_rd_system(n_time_step, t_end, param, ic_list, geometry, seed=seed, ic_controlled=True)
-geometry = "Circles"
-for seed in seed_list:
-    solve_rd_system(n_time_step, t_end, param, ic_list, geometry, seed=seed, ic_controlled=True)
+# Gierer
+param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
+t_opt = t_opt(1.5, 2000)
+run_rd_sim(param, t_opt, model="Gierer", geom="Rectangles", ic_list=ic_list, times_run=40)
+run_rd_sim(param, t_opt, model="Gierer", geom="Circles", ic_list=ic_list, times_run=40)
 
-# Solving the circle case
-# Run the code with different seeds
-np.random.seed(123)
-seed_list = np.random.randint(low=1, high=1000, size=times_run)
-for seed in seed_list:
-    solve_rd_system(n_time_step, t_end, param, ic_list, geometry, seed=seed, ic_controlled=True)
-
-# ------------------------------------------------------------------------
-# Gierer-model 
-# ------------------------------------------------------------------------
-# General parameters 
-param = param_schankenberg(gamma=10, d=100)
-t_end = 2.5
-n_time_step = 2000
-
-# Run for the different geometries 
-geometry = "Rectangles"
-for seed in seed_list:
-    solve_rd_system(n_time_step, t_end, param, ic_list, geometry, model="Gierer", seed=seed, ic_controlled=True)
-
-geometry = "Circles"
-for seed in seed_list:
-    solve_rd_system(n_time_step, t_end, param, ic_list, geometry, model="Gierer", seed=seed, ic_controlled=True)

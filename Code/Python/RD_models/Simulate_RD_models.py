@@ -12,6 +12,12 @@ from tqdm import tqdm
 # Classes for solving the problem
 # -----------------------------------------------------------------------------------
 
+# Class to hold the time options 
+class t_opt:
+    def __init__(self, t_end, n_time_step):
+        self.t_end = t_end
+        self.n_time_step = n_time_step
+
 # Class for holding the initial value parameters, if geom is equal to rectangle
 # a quadratic rectangle will be disturbed with middle x_mid, y_mid and side length r_circle*2
 class init_val_param:
@@ -506,10 +512,13 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
 #    n_holes_list, a list over the number of holes to use 
 #    model, a string of which model is used
 #    geometry, a string (circles or rectangles)
-#    n_time_step, the number of time-steps
-#    t_end, the end time
+#    t_opt, an object that contain the time options 
 #    param, parameters for the correct model 
-def find_mesh_size(lc_list, n_holes_list, model, geometry, n_time_step, t_end, param):
+def find_mesh_size(lc_list, n_holes_list, model, geometry, t_opt, param):
+    # Fix the times
+    n_time_step = t_opt.n_time_step
+    t_end = t_opt.t_end
+    
     # General arguments
     dx = [1]
     init_param = init_val_param(controlled=True, geom="Rectangles", r_circle=0.25)
@@ -597,20 +606,28 @@ def solve_rd_system(n_time_step, t_end, param, geometry="Rectangles", model="Sch
     solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list,
                                         file_locations_twenty, ic_par_twenty, seed=seed)
 
-# -----------------------------------------------------------------------------------
-# Rectangle case, no specific disturbance in the steady state 
-# -----------------------------------------------------------------------------------
-'''
-# Find mesh size Schankenberg
-lc_list = ["0.1", "0.08", "0.06"];
-n_holes_list = ["Zero_holes", "Five_holes", "Twenty_holes"]
-n_time_step = 1500; t_end = 6.0; param = param_schankenberg(gamma=10, d=100)
-#find_mesh_size(lc_list, n_holes_list, "Schankenberg", "Rectangles", n_time_step, t_end, param)
-#find_mesh_size(lc_list, n_holes_list, "Schankenberg", "Circles", n_time_step, t_end, param)
 
-# Find the mesh size Gierer 
-n_time_step = 2000; t_end = 1.5
-param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
-find_mesh_size(lc_list, n_holes_list, "Gierer", "Rectangles", n_time_step, t_end, param)
-find_mesh_size(lc_list, n_holes_list, "Gierer", "Circles", n_time_step, t_end, param)
-'''
+# Function that will solve the PDE for a model several times
+# Args:
+#    param, a parameter class object (for the correct model)
+#    t_opt, the time options (a class object)
+#    model, the model to run
+#    geom, the geometry of the object 
+#    times_run, the number of times to run the analysis
+#    ic_list, a list with initial conditions 
+def run_rd_sim(param, t_opt, model, geom, times_run, ic_list=""):
+    t_end = t_opt.t_end
+    n_time_step = t_opt.n_time_step
+    
+    # Create a seed list for making it reproducible
+    np.random.seed(123)
+    seed_list = np.random.randint(low=1, high=1000, size=times_run)
+    
+    # Solve the system, first case if initial aren't controlled
+    if ic_list == "":
+        for seed in seed_list:
+            solve_rd_system(n_time_step, t_end, param, geom, model, seed=seed)
+        else:
+        for seed in seed_list:
+            solve_rd_system(n_time_step, t_end, param, geom, model,
+                            ic_par=ic_list, ic_controlled=True, seed=seed)
