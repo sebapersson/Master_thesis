@@ -485,12 +485,16 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
         u1, u2 = solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step)
     
     # Write the t_end result to file 
-    t_end_data = pd.DataFrame({"x": dof_x, "y": dof_y, "u1": u1.vector().get_local(), "u2": u2.vector().get_local()})
     file_save = file_locations.file_save_folder + "t_end_data.csv"
     # If file doesn't exist write header, else append file 
     if not os.path.isfile(file_save):
+        t_end_data = pd.DataFrame({"x": dof_x, "y": dof_y, "u1": u1.vector().get_local(), "u2": u2.vector().get_local(), "id" : 1})
         t_end_data.to_csv(file_save)
     else:
+        # Increment maximum id
+        df = pd.read_csv(file_save)
+        id_new = np.max(df.loc[:, "id"]) + 1
+        t_end_data = pd.DataFrame({"x": dof_x, "y": dof_y, "u1": u1.vector().get_local(), "u2": u2.vector().get_local(), "id" : id_new})
         t_end_data.to_csv(file_save, header=False, mode='a')
     
 
@@ -593,4 +597,20 @@ def solve_rd_system(n_time_step, t_end, param, geometry="Rectangles", model="Sch
     solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list,
                                         file_locations_twenty, ic_par_twenty, seed=seed)
 
+# -----------------------------------------------------------------------------------
+# Rectangle case, no specific disturbance in the steady state 
+# -----------------------------------------------------------------------------------
+'''
+# Find mesh size Schankenberg
+lc_list = ["0.1", "0.08", "0.06"];
+n_holes_list = ["Zero_holes", "Five_holes", "Twenty_holes"]
+n_time_step = 1500; t_end = 6.0; param = param_schankenberg(gamma=10, d=100)
+#find_mesh_size(lc_list, n_holes_list, "Schankenberg", "Rectangles", n_time_step, t_end, param)
+#find_mesh_size(lc_list, n_holes_list, "Schankenberg", "Circles", n_time_step, t_end, param)
 
+# Find the mesh size Gierer 
+n_time_step = 2000; t_end = 1.5
+param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
+find_mesh_size(lc_list, n_holes_list, "Gierer", "Rectangles", n_time_step, t_end, param)
+find_mesh_size(lc_list, n_holes_list, "Gierer", "Circles", n_time_step, t_end, param)
+'''
