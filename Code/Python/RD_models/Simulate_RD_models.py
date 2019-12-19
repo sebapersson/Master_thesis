@@ -13,10 +13,11 @@ from tqdm import tqdm
 # -----------------------------------------------------------------------------------
 
 # Class to hold the time options 
-class t_opt:
+class t_opt_class:
     def __init__(self, t_end, n_time_step):
         self.t_end = t_end
         self.n_time_step = n_time_step
+    
 
 # Class for holding the initial value parameters, if geom is equal to rectangle
 # a quadratic rectangle will be disturbed with middle x_mid, y_mid and side length r_circle*2
