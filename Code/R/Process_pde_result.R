@@ -21,11 +21,11 @@ cbPalette <- c(
 #   plot_result, if true the result is plotted 
 #   n_cores, the number of cores to use when doing the grid matching
 #   is_circle, true if the geometry is a circle 
-plot_t_end_data <- function(path_data, path_save, limit_grid, plot_result=T, n_cores=3, is_circle=F, h=0.05, seed=123)
+plot_t_end_data <- function(path_data, path_save, limit_grid, plot_result=T, n_cores=3, is_circle=F, h=0.04, seed=123)
 {
   set.seed(seed)
   
-  # Read the data and aggregate 
+  # Read the data and aggregate   
   data <- read_csv(path_data, col_types = cols()) %>% 
     select(-X1) %>%
     group_by(x, y) %>%
@@ -196,13 +196,50 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
   
 }
 
-# Check if the directory to save the figures in exists 
-check_if_dir_exists(path_dir <- "../../Result/Schankenberg/Rectangle_figures/")
-check_if_dir_exists(path_dir <- "../../Result/Schankenberg/Circle_figures/")
-check_if_dir_exists(path_dir <- "../../Result/Gierer/Rectangle_figures/")
-check_if_dir_exists(path_dir <- "../../Result/Gierer/Circle_figures/")
+# Function that will plot the lc-data (the data used to find the optimal 
+# mesh size) for a given geometry and model 
+# Args:
+#   model, the model name
+#   geom, the geometry the problem is solved over 
+process_lc_data <- function(model, geom)
+{
+  # Select the directories with lc in the name
+  path_files <- str_c("../../Intermediate/Schankenberg", "_files/", geom, "/")
+  file_list <- list.files(path_files)[str_detect(list.files(path_files), "lc")]
+  
+  if(geom == "Rectangles"){
+    is_circle <- F
+    limit_grid <- 2.2
+  }else{
+    is_circle = T
+    limit_grid <- 2.6
+  }
+  # Check that figures directory exists 
+  fig_dir <- str_c("../../Result/", model, "/", geom, "/Figures")
+  check_if_dir_exists(fig_dir)
+  lc_dir <- str_c(fig_dir, "/lc_figs/")
+  check_if_dir_exists(lc_dir)
+  
+  # Create each figure   
+  for(i in 1:length(file_list)){
+    # Check that the directory where the result is stored exists 
+    file_path <- str_c(path_files, file_list[i], "/", "t_end_data.csv")
+    dir_save <- str_c(lc_dir, "/", file_list[i])
+    check_if_dir_exists(dir_save)
+    
+    # Save the t-end figure to disk 
+    path_save <- str_c(dir_save, "/", file_list[i], "t_end_data.pdf")
+    plot_t_end_data(file_path, path_save, limit_grid, plot_result = F, is_circle, n_cores = 1)
+  }
+  
+}
 
-# ===================================================================================================
+# Process the lc-results
+process_lc_data("Schankenberg", "Rectangles")
+process_lc_data("Schankenberg", "Circles")
+
+
+  # ===================================================================================================
 # Working with maximum concentrations rectangles and circles 
 # ===================================================================================================
 # Schankenberg-model 
@@ -349,3 +386,9 @@ plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T
 # Several end-points 
 path_save <- "../../Result/Gierer/Circle_figures/Twenty_holes_end_several.pdf"
 plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
+
+
+# Improve how a certain signature is processed 
+model <- "Schankenberg"
+
+  
