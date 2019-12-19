@@ -21,6 +21,14 @@ class init_val_param:
         self.y_mid = y_mid
         self.r_circle = r_circle
         self.geom = geom
+    
+    # Method that converts and returns the arguments as strings
+    def convert_str(self):
+        r = str(self.r_circle).replace(".", "D")
+        x = str(self.x_mid).replace(".", "D")
+        y = str(self.y_mid).replace(".", "D")
+        return r, x, y
+
 
 # Class for constructing the initial conditions for each state (python syntax)
 # Note that the pattern formation is sensitive to the noise sigma. 
@@ -80,27 +88,42 @@ class param_gierer:
 
 # Class to hold the file-locations for a model, 
 class file_locations_class:
-    def __init__(self, n_holes, geometry, model, controlled_inital=False, find_mesh_size=False, lc="0"):
-        # If the initial values aren't controlled
+    def __init__(self, n_holes, geometry, model, ic_par, controlled_inital=False, find_mesh_size=False, lc="0"):
+        # If the initial values aren't controlled and not finding mesh-size
+        if n_holes == "Zero_holes":
+            hole = "0"
+        elif n_holes == "Five_holes":
+            hole = "5"
+        elif n_holes == "Twenty_holes":
+            hole = "20"
+        
+        # Information about disturbing initial values
+        r, x_mid, y_mid = ic_par.convert_str()
+        
         if controlled_inital == False and find_mesh_size == False:
             self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
             self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
-            self.pwd_folder = "../../../Result/" + model + "/" + geometry + "_pwd_files/" + n_holes + "/"
-            self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/" + n_holes + "_files/"
+            self.pwd_folder = "../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + "_d_k/"
+            self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "_d_k/"
             self.model = model
         # Rename save-folders if initial values are controlled 
         elif controlled_inital == True and find_mesh_size == False:
             self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
             self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
-            self.pwd_folder = "../../../Result/" + model + "/" + geometry + "_pwd_files/" + n_holes + "_init_controlled/"
-            self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "_init_controlled/" + n_holes + "_files/"
+            self.pwd_folder = ("../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + 
+                              "_d" + "r" + r + "x" + x_mid + "y" + y_mid +  "_k/")
+            self.file_save_folder = ("../../../Intermediate/" + model + "_files/" + geometry + "h" + hole + 
+                              "_d" + "r" + r + "x" + x_mid + "y" + y_mid +  "_k/")
             self.model = model
         # Rename save-folders if the aim is to find the mesh-size
         elif find_mesh_size == True:
-            self.path_to_msh_file = "../../Gmsh/" + geometry + "/Rec_lc" + lc + ".msh"
-            self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + "Find_mesh_size_lc" + lc + "_mesh/"
-            self.pwd_folder = "../../../Result/" + model + "/" + geometry + "_pwd_files/" + "Find_mesh_size_lc_" + lc + "/"
-            self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "_find_mesh_size_lc/" + lc + "_files/"
+            # Change . to D structure
+            lc = lc.replace('.', 'D')
+            # Create the files 
+            self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
+            self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
+            self.pwd_folder = "../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + "_lc" + lc + "/"
+            self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "_lc" + lc + "/"
             self.model = model
         else:
             print("Error, improper file-locations entry")
@@ -476,20 +499,44 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
 # size meshes.
 # Args:
 #    lc_list, a list of the lc-values, note 01 -> 0.1, 006 -> 0.06
+#    n_holes_list, a list over the number of holes to use 
 #    model, a string of which model is used
 #    geometry, a string (circles or rectangles)
 #    n_time_step, the number of time-steps
 #    t_end, the end time
 #    param, parameters for the correct model 
-def find_mesh_size(lc_list, model, geometry, n_time_step, t_end, param):
+def find_mesh_size(lc_list, n_holes_list, model, geometry, n_time_step, t_end, param):
     # General arguments
     dx = [1]
-    init_param = init_val_param(controlled=True, geom=geometry, r_circle=0.25)
+    init_param = init_val_param(controlled=True, geom="Rectangles", r_circle=0.25)
+    print("Model = {}, geom = {}".format(model, geometry))
     # Loop through the lc-list
-    for lc in lc_list:
-        file_loc = file_locations_class("Zero", geometry, model, find_mesh_size=True, lc=lc)
-        read_and_convert_mesh(file_loc)
-        solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx, file_loc, init_param)
+    for hole in n_holes_list:
+        print("Solving for {}".format(hole))
+        for lc in lc_list:
+            # Correct file locations
+            file_loc = file_locations_class(hole, geometry, model, init_param, find_mesh_size=True, lc=lc)
+            
+            # Change the lc-value to the current one in the list
+            # by creating a temporary file (and then replacing the old)
+            path_geo_file = file_loc.path_to_msh_file[0:-3] + "geo"
+            temp_file = path_geo_file[0:-4] + "_temp" + ".geo"
+            with open(path_geo_file) as f:
+                lines = f.readlines()
+            lines[0] = 'lc = ' + lc + ';\n'
+            with open(temp_file, 'w') as f:
+                for item in lines:
+                    f.write("%s" % item)
+            os.remove(path_geo_file)
+            os.rename(temp_file, path_geo_file)
+            
+            # Mesh the file
+            path_gmsh = "~/gmsh/gmsh-4.4.1-Linux64/bin/gmsh"
+            os.system(path_gmsh + " -2 " + path_geo_file + " 1> /dev/null") 
+            
+            # Convert mesh and solve 
+            read_and_convert_mesh(file_loc)
+            solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx, file_loc, init_param)
 
 
 # Function that will solve the PDE:s for different number of holes for the
@@ -505,17 +552,7 @@ def find_mesh_size(lc_list, model, geometry, n_time_step, t_end, param):
 #    model, a string specifying which model to solve
 #    ic_controlled, whatever or not the initial values are controlled (false by default)
 #    seed, the seed used for generating the different start-guesses. 
-def solve_rd_system(n_time_step, t_end, param, ic_par=init_val_param(), geometry="Rectangles", model="Schankenberg", ic_controlled=False, seed=123):
-    
-    # The file locations for each case
-    file_locations_zero = file_locations_class("Zero_holes", geometry, model, ic_controlled)
-    file_locations_five = file_locations_class("Five_holes", geometry, model, ic_controlled)
-    file_locations_twenty = file_locations_class("Twenty_holes", geometry, model, ic_controlled)
-    
-    # Create all the different mesh
-    read_and_convert_mesh(file_locations_zero)
-    read_and_convert_mesh(file_locations_five)
-    read_and_convert_mesh(file_locations_twenty)
+def solve_rd_system(n_time_step, t_end, param, geometry="Rectangles", model="Schankenberg", ic_par="", ic_controlled=False, seed=123):
     
     # Adapt unique initial conditions if ic_controlled is a list
     if isinstance(ic_par, list):
@@ -523,9 +560,20 @@ def solve_rd_system(n_time_step, t_end, param, ic_par=init_val_param(), geometry
         ic_par_five = ic_par[1]
         ic_par_twenty = ic_par[2]
     else:
+        ic_par = init_val_param()
         ic_par_zero = ic_par
         ic_par_five = ic_par
         ic_par_twenty = ic_par
+    
+    # The file locations for each case
+    file_locations_zero = file_locations_class("Zero_holes", geometry, model, ic_par_zero, ic_controlled)
+    file_locations_five = file_locations_class("Five_holes", geometry, model, ic_par_five, ic_controlled)
+    file_locations_twenty = file_locations_class("Twenty_holes", geometry, model, ic_par_twenty, ic_controlled)
+    
+    # Create all the different mesh
+    read_and_convert_mesh(file_locations_zero)
+    read_and_convert_mesh(file_locations_five)
+    read_and_convert_mesh(file_locations_twenty)
     
     # Solve the zero holes case 
     print("Solving PDE " + geometry + " with zero holes")
@@ -545,81 +593,4 @@ def solve_rd_system(n_time_step, t_end, param, ic_par=init_val_param(), geometry
     solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list,
                                         file_locations_twenty, ic_par_twenty, seed=seed)
 
-
-# Run the actual analysis 
-def main():
-    # -----------------------------------------------------------------------------------
-    # Rectangle case
-    # -----------------------------------------------------------------------------------
-    # Solving the rectangle case
-    param = param_schankenberg(gamma=10, d=100)
-    t_end = 5
-    n_time_step = 1000
-    times_run = 20
-    geometry = "Rectangles"
-    # Run the code with different seeds
-    np.random.seed(123)
-    seed_list = np.random.randint(low=1, high=1000, size=times_run)
-    for seed in seed_list:
-        solve_rd_system(n_time_step, t_end, param, geometry, seed=seed)
-    
-    # -----------------------------------------------------------------------------------
-    # Circle case 
-    # -----------------------------------------------------------------------------------
-    # Solving the circle case
-    param = param_schankenberg(gamma=10, d=100)
-    t_end = 5
-    n_time_step = 1000
-    times_run = 20
-    geometry = "Circles"
-    # Run the code with different seeds 
-    np.random.seed(123)
-    seed_list = np.random.randint(low=1, high=1000, size=times_run)
-    for seed in seed_list:
-        solve_rd_system(n_time_step, t_end, param, geometry, seed=seed)
-    
-    
-    # -----------------------------------------------------------------------------------
-    # Gierer 
-    # -----------------------------------------------------------------------------------
-    print("Gierer model")
-    # Rectangle case 
-    param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
-    t_end = 1.5
-    n_time_step = 2000
-    geometry = "Rectangles"
-    times_run = 20
-    # Run the code with different seeds 
-    np.random.seed(123)
-    seed_list = np.random.randint(low=1, high=1000, size=times_run)
-    for seed in seed_list:
-        solve_rd_system(n_time_step, t_end, param, geometry, "Gierer", seed=seed)
-    
-    
-    # Circle case 
-    param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
-    t_end = 1.5
-    n_time_step = 2000
-    geometry = "Circles"
-    times_run = 20
-    # Run the code with different seeds 
-    np.random.seed(123)
-    seed_list = np.random.randint(low=1, high=1000, size=times_run)
-    for seed in seed_list:
-        solve_rd_system(n_time_step, t_end, param, geometry, "Gierer", seed=seed)
-    
-    return 0
-
-
-# Run the cases with controlling the mesh size
-# Schankenberg model 
-lc_list = ["01", "008", "006"]; geometry = "Rectangles"
-n_time_step = 1500; t_end = 5.0; param = param_schankenberg(gamma=10, d=100)
-#find_mesh_size(lc_list, "Schankenberg", geometry, n_time_step, t_end, param)
-
-# Gierer model 
-lc_list = ["01", "008", "006"]; geometry = "Rectangles"
-n_time_step = 2000; t_end = 2.5
-param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
-find_mesh_size(lc_list, "Gierer", geometry, n_time_step, t_end, param)
 
