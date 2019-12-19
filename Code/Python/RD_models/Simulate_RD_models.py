@@ -628,6 +628,6 @@ def run_rd_sim(param, t_opt, model, geom, times_run, ic_list=""):
         for seed in seed_list:
             solve_rd_system(n_time_step, t_end, param, geom, model, seed=seed)
         else:
-        for seed in seed_list:
-            solve_rd_system(n_time_step, t_end, param, geom, model,
-                            ic_par=ic_list, ic_controlled=True, seed=seed)
+            for seed in seed_list:
+                solve_rd_system(n_time_step, t_end, param, geom, model,
+                                ic_par=ic_list, ic_controlled=True, seed=seed)
