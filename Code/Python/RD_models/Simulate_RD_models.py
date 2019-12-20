@@ -596,7 +596,8 @@ def find_mesh_size(lc_list, n_holes_list, model, geometry, t_opt, param):
             
             # Convert mesh and solve 
             read_and_convert_mesh(file_loc)
-            solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx, file_loc, init_param)
+            diff_para = None
+            solve_fem(param, t_end, n_time_step, dx, file_loc, init_param, diff_para)
 
 
 # Function that will solve the PDE:s for different number of holes for the
