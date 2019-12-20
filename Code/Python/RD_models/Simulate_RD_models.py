@@ -604,44 +604,22 @@ def find_mesh_size(lc_list, n_holes_list, model, geometry, t_opt, param):
 #    seed, the seed used for generating the different start-guesses. 
 def solve_rd_system(n_time_step, t_end, param, geometry="Rectangles", model="Schankenberg", hole_list, ic_par="", ic_controlled=False, seed=123):
     
-    # Adapt unique initial conditions if ic_controlled is a list
-    if isinstance(ic_par, list):
-        ic_par_zero = ic_par[0]
-        ic_par_five = ic_par[1]
-        ic_par_twenty = ic_par[2]
-    else:
-        ic_par = init_val_param()
-        ic_par_zero = ic_par
-        ic_par_five = ic_par
-        ic_par_twenty = ic_par
+    for i in range(len(hole_list)):
+        if isinstance(ic_par, list):
+            ic_par_i = ic_par[i]
+        else:
+            ic_par_i = init_val_param()
+        
+        file_loc = file_locations_class(hole_list[i], geometry, model, ic_par_i, ic_controlled)
+        # Create all the different mesh
+        read_and_convert_mesh(file_loc)
+        
+        # Solve the zero holes case 
+        print("Solving PDE {} with {}".format(geometry, hole_list[i]))
+        dx_index_list = [1]
+        solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list,
+                                            file_loc, ic_par_i, seed=seed)
     
-    # The file locations for each case
-    file_locations_zero = file_locations_class("Zero_holes", geometry, model, ic_par_zero, ic_controlled)
-    file_locations_five = file_locations_class("Five_holes", geometry, model, ic_par_five, ic_controlled)
-    file_locations_twenty = file_locations_class("Twenty_holes", geometry, model, ic_par_twenty, ic_controlled)
-    
-    # Create all the different mesh
-    read_and_convert_mesh(file_locations_zero)
-    read_and_convert_mesh(file_locations_five)
-    read_and_convert_mesh(file_locations_twenty)
-    
-    # Solve the zero holes case 
-    print("Solving PDE " + geometry + " with zero holes")
-    dx_index_list = [1]
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list,
-                                        file_locations_zero, ic_par_zero, seed=seed)
-    
-    # Solve the five holes case
-    print("Solving PDE " + geometry + " with five holes")
-    dx_index_list = [1]
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list,
-                                        file_locations_five, ic_par_five, seed=seed)
-    
-    # Solve the 20 holes case
-    print("Solving PDE " + geometry + " with twenty holes")
-    dx_index_list = [1]
-    solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list,
-                                        file_locations_twenty, ic_par_twenty, seed=seed)
 
 
 # Function that will solve the PDE for a model several times
@@ -651,8 +629,9 @@ def solve_rd_system(n_time_step, t_end, param, geometry="Rectangles", model="Sch
 #    model, the model to run
 #    geom, the geometry of the object 
 #    times_run, the number of times to run the analysis
+#    hole_list, a list object enumerating the number of holes to use 
 #    ic_list, a list with initial conditions 
-def run_rd_sim(param, t_opt, model, geom, times_run, ic_list=""):
+def run_rd_sim(param, t_opt, model, geom, times_run, hole_list, ic_list=""):
     t_end = t_opt.t_end
     n_time_step = t_opt.n_time_step
     
@@ -663,10 +642,10 @@ def run_rd_sim(param, t_opt, model, geom, times_run, ic_list=""):
     # Solve the system, first case if initial aren't controlled
     if ic_list == "":
         for seed in seed_list:
-            solve_rd_system(n_time_step, t_end, param, geom, model, seed=seed)
+            solve_rd_system(n_time_step, t_end, param, geom, model, hole_list seed=seed)
     else:
         for seed in seed_list:
-            solve_rd_system(n_time_step, t_end, param, geom, model,
+            solve_rd_system(n_time_step, t_end, param, geom, model, hole_list,
                             ic_par=ic_list, ic_controlled=True, seed=seed)
 
 

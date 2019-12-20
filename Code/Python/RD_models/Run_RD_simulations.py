@@ -23,17 +23,18 @@ param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
 # Running simulations without a specific disturbance in the steady state
 # ------------------------------------------------------------------------------
 print("Solving without controlled disturbance")
+hl = ["Zero_holes", "Five_holes", "Twenty_holes"]
 # Schankenberg
 param = param_schankenberg(gamma=10, d=100)
 t_opt = t_opt_class(7.5, 2000)
-run_rd_sim(param, t_opt, model="Schankenberg", geom="Rectangles", times_run=40)
-run_rd_sim(param, t_opt, model="Schankenberg", geom="Circles", times_run=40)
+run_rd_sim(param, t_opt, model="Schankenberg", geom="Rectangles", hole_list=hl, times_run=40)
+run_rd_sim(param, t_opt, model="Schankenberg", geom="Circles", hole_list=hl, times_run=40)
 
 # Gierer
 param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
 t_opt = t_opt_class(1.5, 2000)
-run_rd_sim(param, t_opt, model="Gierer", geom="Rectangles", times_run=40)
-run_rd_sim(param, t_opt, model="Gierer", geom="Circles", times_run=40)
+run_rd_sim(param, t_opt, model="Gierer", geom="Rectangles", hole_list=hl, times_run=40)
+run_rd_sim(param, t_opt, model="Gierer", geom="Circles", hole_list=hl, times_run=40)
 
 # ------------------------------------------------------------------------------
 # Running simulations with a controlled disturbance steady state 
@@ -48,12 +49,12 @@ ic_list = [ic_par_zero, ic_par_five, ic_par_twenty]
 # Schankenberg
 param = param_schankenberg(gamma=10, d=100)
 t_opt = t_opt_class(7.5, 2000)
-run_rd_sim(param, t_opt, model="Schankenberg", geom="Rectangles", ic_list=ic_list, times_run=40)
-run_rd_sim(param, t_opt, model="Schankenberg", geom="Circles", ic_list=ic_list, times_run=40)
+run_rd_sim(param, t_opt, model="Schankenberg", geom="Rectangles", hole_list=hl, ic_list=ic_list, times_run=40)
+run_rd_sim(param, t_opt, model="Schankenberg", geom="Circles", hole_list=hl, ic_list=ic_list, times_run=40)
 
 # Gierer
 param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
 t_opt = t_opt_class(1.5, 2000)
-run_rd_sim(param, t_opt, model="Gierer", geom="Rectangles", ic_list=ic_list, times_run=40)
-run_rd_sim(param, t_opt, model="Gierer", geom="Circles", ic_list=ic_list, times_run=40)
+run_rd_sim(param, t_opt, model="Gierer", geom="Rectangles", hole_list=hl, ic_list=ic_list, times_run=40)
+run_rd_sim(param, t_opt, model="Gierer", geom="Circles", hole_list=hl, ic_list=ic_list, times_run=40)
 
