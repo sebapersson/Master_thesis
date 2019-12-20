@@ -510,8 +510,9 @@ def solve_fem(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, 
             F += formulate_FEM_schnakenberg(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
         
         # Add the domains with different parameter-values
-        for i in diff_para.dx_list:
-            F += formulate_FEM(diff_para.param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
+        if diff_para != None:
+            for i in diff_para.dx_list:
+                F += formulate_FEM(diff_para.param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
         
         # Solving the backward system 
         solve_backward_euler(V, F, u, u_n, dt, folder_save, n_time_step)
@@ -523,8 +524,9 @@ def solve_fem(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, 
             F += formulate_FEM(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
         
         # Add the domains with different parameter-values
-        for i in diff_para.dx_list:
-            F += formulate_FEM(diff_para.param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
+        if diff_para != None:
+            for i in diff_para.dx_list:
+                F += formulate_FEM(diff_para.param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
         
         # Solve the PDE-system 
         u1, u2 = solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step)
