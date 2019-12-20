@@ -371,10 +371,14 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
         
         # Store the maximum value
         max_conc[n, 0] = t
-        max_conc[n, 1] = np.max(_u_1.vector().get_local())
+        u1_vec = _u_1.vector().get_local()
+        # Avoid problems with two molecules being stored 
+        len_vec = int(len(u1_vec) / 2)
+        u1_vec = u1_vec[np.tile([True, False], len_vec)]
+        max_conc[n, 1] = np.max(u1_vec)
         
         # Sanity check solution
-        min_u1 = np.min(_u_1.vector().get_local())
+        min_u1 = np.min(u1_vec)
         min_u2 = np.min(_u_2.vector().get_local())
         if min_u1 < 0 or min_u2 < 0:
             print("Error, negative concentration")
@@ -529,13 +533,19 @@ def solve_fem(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, 
     file_save = file_locations.file_save_folder + "t_end_data.csv"
     # If file doesn't exist write header, else append file 
     if not os.path.isfile(file_save):
-        t_end_data = pd.DataFrame({"x": dof_x, "y": dof_y, "u1": u1.vector().get_local(), "u2": u2.vector().get_local(), "id" : 1})
+        t_end_data = pd.DataFrame({"x": dof_x, "y": dof_y, "u1": u1.vector().get_local(), "id" : 1})
+        # Fix problem with index (know which vector is saved)
+        n_rep = int(len(t_end_data.index) / 2); id_mol = np.tile([1, 2], n_rep)
+        t_end_data["id_mol"] = id_mol
         t_end_data.to_csv(file_save)
     else:
         # Increment maximum id
         df = pd.read_csv(file_save)
         id_new = np.max(df.loc[:, "id"]) + 1
-        t_end_data = pd.DataFrame({"x": dof_x, "y": dof_y, "u1": u1.vector().get_local(), "u2": u2.vector().get_local(), "id" : id_new})
+        t_end_data = pd.DataFrame({"x": dof_x, "y": dof_y, "u1": u1.vector().get_local(), "id" : id_new})
+        # Fix problem with index (know which molecule is which)
+        n_rep = int(len(t_end_data.index) / 2); id_mol = np.tile([1, 2], n_rep)
+        t_end_data["id_mol"] = id_mol
         t_end_data.to_csv(file_save, header=False, mode='a')
     
 
