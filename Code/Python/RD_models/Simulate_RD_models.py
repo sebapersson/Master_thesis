@@ -12,12 +12,28 @@ from tqdm import tqdm
 # Classes for solving the problem
 # -----------------------------------------------------------------------------------
 
+# Class object to hold which sub-domains will have changed parameters
+# values, and what the parameter values are changed to. 
+class diff_param_class:
+    def __init__(self, dx_list, param):
+        self.param = param
+        self.dx_list = dx_list
+    
+    # Method to convert the parameters to string
+    def convert_to_str(self):
+        a = str(self.param.a).replace(".", "D")
+        b = str(self.param.b).replace(".", "D")
+        gamma = str(self.param.gamma).replace(".", "D")
+        d = str(self.param.d).replace(".", "D")
+        return a, b, gamma, d
+
+
 # Class to hold the time options 
 class t_opt_class:
     def __init__(self, t_end, n_time_step):
         self.t_end = t_end
         self.n_time_step = n_time_step
-    
+
 
 # Class for holding the initial value parameters, if geom is equal to rectangle
 # a quadratic rectangle will be disturbed with middle x_mid, y_mid and side length r_circle*2
@@ -95,7 +111,7 @@ class param_gierer:
 
 # Class to hold the file-locations for a model, 
 class file_locations_class:
-    def __init__(self, n_holes, geometry, model, ic_par, controlled_inital=False, find_mesh_size=False, lc="0"):
+    def __init__(self, n_holes, geometry, model, ic_par, controlled_inital=False, find_mesh_size=False, lc="0", diff_para=None):
         # If the initial values aren't controlled and not finding mesh-size
         if n_holes == "Zero_holes":
             hole = "0"
@@ -107,14 +123,14 @@ class file_locations_class:
         # Information about disturbing initial values
         r, x_mid, y_mid = ic_par.convert_str()
         
-        if controlled_inital == False and find_mesh_size == False:
+        if controlled_inital == False and find_mesh_size == False and diff_para == None:
             self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
             self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
             self.pwd_folder = "../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + "_d_k/"
             self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "_d_k/"
             self.model = model
         # Rename save-folders if initial values are controlled 
-        elif controlled_inital == True and find_mesh_size == False:
+        elif controlled_inital == True and find_mesh_size == False and diff_para == None:
             self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
             self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
             self.pwd_folder = ("../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + 
@@ -132,6 +148,16 @@ class file_locations_class:
             self.pwd_folder = "../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + "_lc" + lc + "/"
             self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "_lc" + lc + "/"
             self.model = model
+        # The case the parameters have been disturbed
+        elif diff_para != None and controlled_inital == False:
+            a, b, gamma, d = diff_para.convert_to_str()
+            self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
+            self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
+            self.pwd_folder = ("../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + "d_k" +
+                               "a" + a + "b" + b + "ga" + gamma + "di" + d)
+            self.file_save_folder = ("../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "d_k" +
+                                     "a" + a + "b" + b + "ga" + gamma + "di" + d + "/")
+            self.model = model 
         else:
             print("Error, improper file-locations entry")
             sys.exit(1)
@@ -384,6 +410,7 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
 #     dx_index_list, a list of which space surface measures to solve the PDE over
 #     file_locations, a class object containing all the file locations for saving the result
 #     ic_parameters, class object containing the parameters for initial conditions.
+#     diff_para, a different parameter object, this is done to adapt the parameters in certain regions 
 #     use_backward, if true the backward Euler method is used for solving the problem,
 #         by default explicit Euler is desired.
 #     seed, the seed to use when generating the random initial states
@@ -392,7 +419,7 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
 #     max_conc-file, a csv-file containing the maximum concentration at each time step
 #     t_end-file, a csv-file containing the concentrations at the end time. Note that upon running the function
 #         several times the function will append already existing csv-files. 
-def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations, ic_par,
+def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, diff_para, 
                                         use_backward=False, seed=123):
     
     # Setting the seed to reproduce the result 
@@ -479,6 +506,10 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
         for i in dx_index_list:
             F += formulate_FEM_schnakenberg(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
         
+        # Add the domains with different parameter-values
+        for i in diff_para.dx_list:
+            F += formulate_FEM(diff_para.param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
+        
         # Solving the backward system 
         solve_backward_euler(V, F, u, u_n, dt, folder_save, n_time_step)
         
@@ -487,6 +518,10 @@ def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list
         u_1, u_2 = TrialFunctions(V)
         for i in dx_index_list:
             F += formulate_FEM(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
+        
+        # Add the domains with different parameter-values
+        for i in diff_para.dx_list:
+            F += formulate_FEM(diff_para.param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
         
         # Solve the PDE-system 
         u1, u2 = solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step)
@@ -564,9 +599,10 @@ def find_mesh_size(lc_list, n_holes_list, model, geometry, t_opt, param):
 #    ic_par, the parameters for the initial value (can be a list for each number of holes)
 #    geometry, a string of the geometry being solved
 #    model, a string specifying which model to solve
+#    hole_list, a list object containing the number of holes, not that ic_par most match this list 
 #    ic_controlled, whatever or not the initial values are controlled (false by default)
 #    seed, the seed used for generating the different start-guesses. 
-def solve_rd_system(n_time_step, t_end, param, geometry="Rectangles", model="Schankenberg", ic_par="", ic_controlled=False, seed=123):
+def solve_rd_system(n_time_step, t_end, param, geometry="Rectangles", model="Schankenberg", hole_list, ic_par="", ic_controlled=False, seed=123):
     
     # Adapt unique initial conditions if ic_controlled is a list
     if isinstance(ic_par, list):
@@ -628,7 +664,28 @@ def run_rd_sim(param, t_opt, model, geom, times_run, ic_list=""):
     if ic_list == "":
         for seed in seed_list:
             solve_rd_system(n_time_step, t_end, param, geom, model, seed=seed)
-        else:
-            for seed in seed_list:
-                solve_rd_system(n_time_step, t_end, param, geom, model,
-                                ic_par=ic_list, ic_controlled=True, seed=seed)
+    else:
+        for seed in seed_list:
+            solve_rd_system(n_time_step, t_end, param, geom, model,
+                            ic_par=ic_list, ic_controlled=True, seed=seed)
+
+
+
+
+# Adding functionality to change parameters in sub-domains
+diff_para = diff_param_class([2], param_gierer(a=0.5, b=2.0, d=100, gamma=10))
+param = param_schankenberg(gamma=10, d=100)
+
+# Function that will be called by run_rd_sim when the parameters have been
+# disturbed in certain sub-regions 
+
+# Running simulations for different param
+t_end = 7.5
+n_time_step = 1500
+n_holes = "Five_holes"
+model = "Schankenberg"
+geom = "Rectangles"
+ic_par = init_val_param()
+file_loc = file_locations_class(n_holes, geom, model, ic_par, diff_para=diff_para)
+solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, [1], file_loc, ic_par, diff_para)
+
