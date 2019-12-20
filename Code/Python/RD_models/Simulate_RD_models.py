@@ -419,8 +419,7 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
 #     max_conc-file, a csv-file containing the maximum concentration at each time step
 #     t_end-file, a csv-file containing the concentrations at the end time. Note that upon running the function
 #         several times the function will append already existing csv-files. 
-def solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, diff_para, 
-                                        use_backward=False, seed=123):
+def solve_fem(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, diff_para, use_backward=False, seed=123):
     
     # Setting the seed to reproduce the result 
     np.random.seed(seed)
@@ -593,32 +592,43 @@ def find_mesh_size(lc_list, n_holes_list, model, geometry, t_opt, param):
 # same parameter set and time interval. Note that currently only two models are
 # allowed, Gierer and the "Schankenberg" model.
 # Args:
-#    n_time_step, the number of time-steps when solving the PDE
-#    t_end, the end time when solving the pde
+#    t_opt, a t_opt class object used to store time 
 #    param, an object of parameter class
 #    ic_par, the parameters for the initial value (can be a list for each number of holes)
 #    geometry, a string of the geometry being solved
 #    model, a string specifying which model to solve
 #    hole_list, a list object containing the number of holes, not that ic_par most match this list 
 #    ic_controlled, whatever or not the initial values are controlled (false by default)
+#    diff_par, a different parameter object list, most match elements with hole_list (and if provided ic-list)
 #    seed, the seed used for generating the different start-guesses. 
-def solve_rd_system(n_time_step, t_end, param, geometry="Rectangles", model="Schankenberg", hole_list, ic_par="", ic_controlled=False, seed=123):
+def solve_rd_system(t_opt, param, geometry="Rectangles", model="Schankenberg", hole_list=[],
+                    ic_par="", ic_controlled=False, diff_par_list=None, seed=123):
     
+    t_end = t_opt.t_end
+    n_time_step = t_opt.n_time_step
     for i in range(len(hole_list)):
+        
+        # Fix the initial values 
         if isinstance(ic_par, list):
             ic_par_i = ic_par[i]
         else:
             ic_par_i = init_val_param()
+            diff_par_i = None
         
-        file_loc = file_locations_class(hole_list[i], geometry, model, ic_par_i, ic_controlled)
-        # Create all the different mesh
+        # Fix the different parameters
+        if diff_par_list == None:
+            diff_par_i = None
+        else:
+            diff_par_i = diff_par_list[i]
+        
+        # Fix the mesh
+        file_loc = file_locations_class(hole_list[i], geometry, model, ic_par_i, ic_controlled, diff_para=diff_par_i)
         read_and_convert_mesh(file_loc)
         
         # Solve the zero holes case 
         print("Solving PDE {} with {}".format(geometry, hole_list[i]))
         dx_index_list = [1]
-        solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, dx_index_list,
-                                            file_loc, ic_par_i, seed=seed)
+        solve_fem(param, t_end, n_time_step, dx_index_list, file_loc, ic_par_i, diff_par_i, seed=seed)
     
 
 
@@ -631,40 +641,24 @@ def solve_rd_system(n_time_step, t_end, param, geometry="Rectangles", model="Sch
 #    times_run, the number of times to run the analysis
 #    hole_list, a list object enumerating the number of holes to use 
 #    ic_list, a list with initial conditions 
-def run_rd_sim(param, t_opt, model, geom, times_run, hole_list, ic_list=""):
-    t_end = t_opt.t_end
-    n_time_step = t_opt.n_time_step
+def run_rd_sim(param, t_opt, model, geom, times_run, hole_list, ic_list=None, diff_par_list=None):
     
     # Create a seed list for making it reproducible
     np.random.seed(123)
     seed_list = np.random.randint(low=1, high=1000, size=times_run)
     
     # Solve the system, first case if initial aren't controlled
-    if ic_list == "":
+    if ic_list == None and diff_par_list == None:
         for seed in seed_list:
-            solve_rd_system(n_time_step, t_end, param, geom, model, hole_list seed=seed)
-    else:
+            solve_rd_system(t_opt, param, geom, model, hole_list, seed=seed)
+    # If the initial are controlled 
+    elif ic_list != None and diff_par == None:
         for seed in seed_list:
-            solve_rd_system(n_time_step, t_end, param, geom, model, hole_list,
-                            ic_par=ic_list, ic_controlled=True, seed=seed)
+            solve_rd_system(t_opt, param, geom, model, hole_list, ic_par=ic_list, ic_controlled=True, seed=seed)
+    # If different parameters are used 
+    elif diff_par_list != None and ic_list == None:
+        for seed in seed_list:
+            solve_rd_system(t_opt, param, geom, model, hole_list, diff_par_list=diff_par_list, seed=seed)
 
 
-
-
-# Adding functionality to change parameters in sub-domains
-diff_para = diff_param_class([2], param_gierer(a=0.5, b=2.0, d=100, gamma=10))
-param = param_schankenberg(gamma=10, d=100)
-
-# Function that will be called by run_rd_sim when the parameters have been
-# disturbed in certain sub-regions 
-
-# Running simulations for different param
-t_end = 7.5
-n_time_step = 1500
-n_holes = "Five_holes"
-model = "Schankenberg"
-geom = "Rectangles"
-ic_par = init_val_param()
-file_loc = file_locations_class(n_holes, geom, model, ic_par, diff_para=diff_para)
-solve_schankenberg_sub_domain_holes(param, t_end, n_time_step, [1], file_loc, ic_par, diff_para)
 
