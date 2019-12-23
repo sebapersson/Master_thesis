@@ -83,20 +83,14 @@ check_if_dir_exists <- function(path_dir) if(!dir.exists(path_dir)) dir.create(p
 plot_max_conc_data <- function(file_list, geometry, path_save, plot_data=T)
 {
   # Read the data
-  data_0_holes_rec <- read_csv(file_list[1], col_types = cols()) %>%
-    mutate(geometry = geometry) %>%
-    mutate(n_holes = 0)
-  data_5_holes_rec <- read_csv(file_list[2], col_types = cols()) %>%
-    mutate(geometry = geometry) %>%
-    mutate(n_holes = 5)
-  data_20_holes_rec <- read_csv(file_list[3], col_types = cols()) %>%
-    mutate(geometry = geometry) %>%
-    mutate(n_holes = 20)
+  data_tot_rec <- do.call(bind_rows, lapply(1:length(file_list), function(i){
+    n_holes <- find_number_of_holes(file_list[i])
+    data <- read_csv(file_list[i], col_types = cols()) %>%
+      mutate(geometry = geometry) %>%
+      mutate(n_holes = n_holes)}))
   
   # Aggregate the result   
-  data_tot_rec <- data_0_holes_rec %>%
-    bind_rows(data_5_holes_rec) %>%
-    bind_rows(data_20_holes_rec) %>% 
+  data_tot_rec <- data_tot_rec %>%
     mutate(geometry = as.factor(geometry)) %>%
     mutate(n_holes = as.factor(n_holes)) %>%
     select(-X1) %>%
@@ -117,6 +111,20 @@ plot_max_conc_data <- function(file_list, geometry, path_save, plot_data=T)
   
   if(plot_data == T) print(p1)
 }
+
+# Function that will extract and return the number of holes for a certain file. 
+# Note that the number of holes are found using regular expressions 
+# Args: 
+#   file_path, the path to the file 
+# Returns:
+#   the number of holes the mesh has 
+find_number_of_holes <- function(file_path)
+{
+  pattern <- "h([0-9]*)_"
+  n_holes <- as.integer(str_match(file_path, pattern)[2])
+  return(n_holes)
+}
+
 
 # Function that will plot 10 randomly selected end-time profiles, this with the goal to charactersise 
 # what kind of patters are created when holes are inserted into the grid. 
@@ -230,7 +238,7 @@ process_lc_data <- function(model, geom)
 #   sign, a signuare to get the experiment, note regex to avoid multiple matching
 #   save_tag, save tag for the maximum plot (should reflect the experiment)
 #   n_cores, the number of cores to use, by default 1
-process_experiment <- function(model, geom_list, sign, save_tag, n_cores=1)
+process_experiment <- function(model, geom_list, sign, save_tag, hole_list=c(0, 20, 5), n_cores=1)
 {
   
   # Loop over the geometries 
@@ -240,7 +248,7 @@ process_experiment <- function(model, geom_list, sign, save_tag, n_cores=1)
       list.files(path_files)[str_detect(list.files(path_files), i)]}))
     
     # Save guard if regex fails
-    if(length(file_list) != 3){
+    if(length(file_list) > 3){
       print("File list is longer than three elements")
       print(file_list)
     }
@@ -257,9 +265,6 @@ process_experiment <- function(model, geom_list, sign, save_tag, n_cores=1)
     
     # Maximum concentration 
     file_input_list <- str_c(path_files, file_list, "/max_conc.csv")
-    temp <- file_input_list[2] 
-    file_input_list[2] <- file_input_list[3]
-    file_input_list[3] <- temp
     path_save <- str_c(max_conc_dir, save_tag, "_max_cond.pdf")
     plot_max_conc_data(file_input_list, geom, path_save, plot_data = F)
     
