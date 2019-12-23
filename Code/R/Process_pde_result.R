@@ -25,15 +25,11 @@ plot_t_end_data <- function(path_data, path_save, limit_grid, plot_result=T, n_c
 {
   set.seed(seed)
   
-  # Read the data and aggregate   
+  # Read the data and aggregate, only check u1 
   data <- read_csv(path_data, col_types = cols()) %>% 
     select(-X1) %>%
-    group_by(x, y) %>%
-    summarise(u1_med = mean(u1), 
-              u1_std = sd(u1), 
-              u2_med = mean(u2), 
-              u2_std = sd(u2))
-  
+    filter(id_mol == 1)
+
   # Make a grid 
   x1s <- seq(-limit_grid, limit_grid, by = h)
   x2s <- seq(-limit_grid, limit_grid, by = h)
@@ -41,7 +37,7 @@ plot_t_end_data <- function(path_data, path_save, limit_grid, plot_result=T, n_c
   # Find the closest point in the grid to the points in the data
   u_grid <- do.call(rbind, parallel::mclapply(1:dim(X_pred)[1], function(i){
     best_index <- which.min((data$x - X_pred$Var1[i])^2 + (data$y - X_pred$Var2[i])^2)[1]
-    return(data$u1_med[best_index])}, mc.cores = n_cores))
+    return(data$u1[best_index])}, mc.cores = n_cores))
   
   data_to_plot <- tibble(x = X_pred$Var1, 
                          y = X_pred$Var2, 
@@ -80,26 +76,20 @@ check_if_dir_exists <- function(path_dir) if(!dir.exists(path_dir)) dir.create(p
 # Function that for a certain geometry will plot the maximum concentration vs time, note that the 
 # function works under the assumption of 0, 5 and twenty holes in the file-names. 
 # Args:
-#   dir_fil, the path to the directory where the files can be found 
+#   file_list, a list of file paths (in order of 0, 5 and 20 holes)
 #   geometry, the geometry considered 
 #   path_save, the path to where the file should be saved
 #   plot_data, if the created plot should be displayed or not, true by default
-plot_max_conc_data <- function(dir_files, geometry, path_save, plot_data=T)
+plot_max_conc_data <- function(file_list, geometry, path_save, plot_data=T)
 {
-  # The files are saved as max_conc
-  file_name <- "max_conc.csv"
-  
   # Read the data
-  path_data <- str_c(dir_files, "Zero_holes_files/", file_name)
-  data_0_holes_rec <- read_csv(path_data, col_types = cols()) %>%
+  data_0_holes_rec <- read_csv(file_list[1], col_types = cols()) %>%
     mutate(geometry = geometry) %>%
     mutate(n_holes = 0)
-  path_data <- str_c(dir_files, "Five_holes_files/", file_name)
-  data_5_holes_rec <- read_csv(path_data, col_types = cols()) %>%
+  data_5_holes_rec <- read_csv(file_list[2], col_types = cols()) %>%
     mutate(geometry = geometry) %>%
     mutate(n_holes = 5)
-  path_data <- str_c(dir_files, "Twenty_holes_files/", file_name)
-  data_20_holes_rec <- read_csv(path_data, col_types = cols()) %>%
+  data_20_holes_rec <- read_csv(file_list[3], col_types = cols()) %>%
     mutate(geometry = geometry) %>%
     mutate(n_holes = 20)
   
@@ -145,15 +135,13 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
   set.seed(seed)
   # Write function to plot a random sample of t-end results (like 10 of them)
   data <- read_csv(path_data, col_types = cols()) %>%
-    select(-X1) 
-  
-  data <- data %>%
-    mutate(id = as.factor(rep(1:20, each = length(data$x) / 20))) %>%
-    select(id, everything())
+    select(-X1) %>%
+    filter(id_mol == 1)
   
   # Using 10 to (else the plot will be to messy)
   n_random_figs <- 10
-  id_to_plot <- sample(1:20, n_random_figs, replace = F)
+  n_exp <- length(unique(data$id))
+  id_to_plot <- sample(1:n_exp, n_random_figs, replace = F)
   
   # Create the grid 
   x1s <- seq(-limit_grid, limit_grid, by = h)
@@ -234,161 +222,77 @@ process_lc_data <- function(model, geom)
   
 }
 
+# Function that for a certain experimenal condition will create the max-conc, t_end_several
+# and t_mean plots for a provided model for all the geometries in the geom_list. 
+# Args:
+#   model, a string of the model 
+#   geom_list, a list of the geometries to investigate 
+#   sign, a signuare to get the experiment, note regex to avoid multiple matching
+#   save_tag, save tag for the maximum plot (should reflect the experiment)
+#   n_cores, the number of cores to use, by default 1
+process_experiment <- function(model, geom_list, sign, save_tag, n_cores=1)
+{
+  
+  # Loop over the geometries 
+  for(geom in geom_list){
+    path_files <- str_c("../../Intermediate/", model, "_files/", geom, "/")
+    file_list <- list.files(path_files)[str_detect(list.files(path_files), sign)]
+    
+    # Save guard if regex fails
+    if(length(file_list) != 3){
+      print("File list is longer than three elements")
+      print(file_list)
+    }
+    
+    # Check that the directories to save in exist 
+    dir_save <- str_c("../../Result/", model, "/", geom, "/Figures/")
+    max_conc_dir <- str_c(dir_save, "Max_conc/")
+    t_end_sev <- str_c(dir_save, "t_end_sev/")
+    t_end_mean <- str_c(dir_save, "t_end_mean/")
+    check_if_dir_exists(dir_save)
+    check_if_dir_exists(max_conc_dir)
+    check_if_dir_exists(t_end_mean)
+    check_if_dir_exists(t_end_sev)
+    
+    # Maximum concentration 
+    file_input_list <- str_c(path_files, file_list, "/max_conc.csv")
+    temp <- file_input_list[2] 
+    file_input_list[2] <- file_input_list[3]
+    file_input_list[3] <- temp
+    path_save <- str_c(max_conc_dir, save_tag, "_max_cond.pdf")
+    plot_max_conc_data(file_input_list, geom, path_save, plot_data = F)
+    
+    if(geom == "Rectangles"){
+      is_circle <- F
+      limit_grid <- 2.2
+    }else{
+      is_circle = T
+      limit_grid <- 2.6
+    }
+    
+    # The summarised max-conc data, plot for different number of holes 
+    for(i in 1:length(file_list)){
+      file <- file_list[i]
+      
+      path_file <- str_c(path_files, file, "/t_end_data.csv")
+      path_save_mean <- str_c(t_end_mean, file, "_t_end_mean.pdf")
+      path_save_several <- str_c(t_end_sev, file, "_t_end_sev.pdf")
+      
+      plot_several_end_times(path_file, path_save_several, limit_grid, n_cores=n_cores, is_circle=is_circle)
+      plot_t_end_data(path_file, path_save_mean, limit_grid, plot_result = F, n_cores=n_cores, is_circle = is_circle)
+    }
+  }
+}
+
+# ===============================================================================================
+# Analyse the data 
+# ===============================================================================================
 # Process the lc-results
 process_lc_data("Schankenberg", "Rectangles")
 process_lc_data("Schankenberg", "Circles")
 
+# Process non-controlled disturbance case 
+geom_list <- c("Rectangles", "Circles")
+process_experiment(model="Schankenberg", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
+process_experiment(model="Gierer", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
 
-  # ===================================================================================================
-# Working with maximum concentrations rectangles and circles 
-# ===================================================================================================
-# Schankenberg-model 
-dir_files <- "../../Intermediate/Schankenberg_files/Rectangles/"
-geometry <- "rectangle"
-path_save <- "../../Result/Schankenberg/Rectangle_figures/Max_conc.pdf"
-plot_max_conc_data(dir_files, geometry, path_save)
-
-dir_files <- "../../Intermediate/Schankenberg_files/Circles/"
-geometry <- "circle"
-path_save <- "../../Result/Schankenberg/Circle_figures/Max_conc.pdf"
-plot_max_conc_data(dir_files, geometry, path_save)
-
-# ---------------------------------------------------------------------------------------------------
-# Last time-point data rectangles 
-# ---------------------------------------------------------------------------------------------------
-# Zero holes
-limit_grid <- 2.2
-path_data <- "../../Intermediate/Schankenberg_files/Rectangles/Zero_holes_files/t_end_data.csv"
-path_save <- "../../Result/Schankenberg/Rectangle_figures/Zero_holes_end.pdf"
-plot_t_end_data(path_data, path_save, limit_grid, plot_result = F)
-# Several end-points 
-path_save <- "../../Result/Schankenberg/Rectangle_figures/Zero_holes_end_several.pdf"
-plot_several_end_times(path_data, path_save, limit_grid)
-
-# Five holes 
-path_data <- "../../Intermediate/Schankenberg_files/Rectangles/Five_holes_files/t_end_data.csv"
-path_save <- "../../Result/Schankenberg/Rectangle_figures/Five_holes_end.pdf"
-limit_grid <- 2.2
-plot_t_end_data(path_data, path_save, limit_grid, plot_result = F)
-# Several end-points 
-path_save <- "../../Result/Schankenberg/Rectangle_figures/Five_holes_end_several.pdf"
-plot_several_end_times(path_data, path_save, limit_grid)
-
-# Twenty holes 
-path_data <- "../../Intermediate/Schankenberg_files/Rectangles/Twenty_holes_files/t_end_data.csv"
-path_save <- "../../Result/Schankenberg/Rectangle_figures/Twenty_holes_end.pdf"
-limit_grid <- 2.2
-plot_t_end_data(path_data, path_save, limit_grid, plot_result = F)
-# Several end-points 
-path_save <- "../../Result/Schankenberg/Rectangle_figures/Twenty_holes_end_several.pdf"
-plot_several_end_times(path_data, path_save, limit_grid)
-
-# ---------------------------------------------------------------------------------------------------
-# Last time-point data circles
-# ---------------------------------------------------------------------------------------------------
-# Zero holes
-path_data <- "../../Intermediate/Schankenberg_files/Circles/Zero_holes_files/t_end_data.csv"
-path_save <- "../../Result/Schankenberg/Circle_figures/Zero_holes_end.pdf"
-limit_grid <- 2.6
-plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T)
-# Several end-points 
-path_save <- "../../Result/Schankenberg/Circle_figures/Zero_holes_end_several.pdf"
-plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
-
-# Five holes 
-path_data <- "../../Intermediate/Schankenberg_files/Circles/Five_holes_files/t_end_data.csv"
-path_save <- "../../Result/Schankenberg/Circle_figures/Five_holes_end.pdf"
-limit_grid <- 2.6
-plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T)
-# Several end-points 
-path_save <- "../../Result/Schankenberg/Circle_figures/Five_holes_end_several.pdf"
-plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
-
-## Twenty holes 
-path_data <- "../../Intermediate/Schankenberg_files/Circles/Twenty_holes_files/t_end_data.csv"
-path_save <- "../../Result/Schankenberg/Circle_figures/Twenty_holes_end.pdf"
-limit_grid <- 2.6
-plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T)
-# Several end-points 
-path_save <- "../../Result/Schankenberg/Circle_figures/Twenty_holes_end_several.pdf"
-plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
-  
-
-# ===================================================================================================
-# Working with maximum concentrations rectangles and circles Gierer 
-# ===================================================================================================
-dir_files <- "../../Intermediate/Gierer_files/Rectangles/"
-geometry <- "rectangle"
-path_save <- "../../Result/Gierer/Rectangle_figures/Max_conc.pdf"
-plot_max_conc_data(dir_files, geometry, path_save)
-
-dir_files <- "../../Intermediate/Gierer_files/Circles/"
-geometry <- "circle"
-path_save <- "../../Result/Gierer/Circle_figures/Max_conc.pdf"
-plot_max_conc_data(dir_files, geometry, path_save)
-
-# ---------------------------------------------------------------------------------------------------
-# Last time-point data rectangles Gierer 
-# ---------------------------------------------------------------------------------------------------
-# Zero holes
-limit_grid <- 2.2
-path_data <- "../../Intermediate/Gierer_files/Rectangles/Zero_holes_files/t_end_data.csv"
-path_save <- "../../Result/Gierer/Rectangle_figures/Zero_holes_end.pdf"
-plot_t_end_data(path_data, path_save, limit_grid, plot_result = F)
-# Several end-points 
-path_save <- "../../Result/Gierer/Rectangle_figures/Zero_holes_end_several.pdf"
-plot_several_end_times(path_data, path_save, limit_grid)
-
-# Five holes 
-path_data <- "../../Intermediate/Gierer_files/Rectangles/Five_holes_files/t_end_data.csv"
-path_save <- "../../Result/Gierer/Rectangle_figures/Five_holes_end.pdf"
-limit_grid <- 2.2
-plot_t_end_data(path_data, path_save, limit_grid, plot_result = F)
-# Several end-points 
-path_save <- "../../Result/Gierer/Rectangle_figures/Five_holes_end_several.pdf"
-plot_several_end_times(path_data, path_save, limit_grid)
-
-# Twenty holes 
-path_data <- "../../Intermediate/Gierer_files/Rectangles/Twenty_holes_files/t_end_data.csv"
-path_save <- "../../Result/Gierer/Rectangle_figures/Twenty_holes_end.pdf"
-limit_grid <- 2.2
-plot_t_end_data(path_data, path_save, limit_grid, plot_result = F)
-# Several end-points 
-path_save <- "../../Result/Gierer/Rectangle_figures/Twenty_holes_end_several.pdf"
-plot_several_end_times(path_data, path_save, limit_grid)
-
-# ---------------------------------------------------------------------------------------------------
-# Last time-point data circles Gierer 
-# ---------------------------------------------------------------------------------------------------
-# Zero holes
-path_data <- "../../Intermediate/Gierer_files/Circles/Zero_holes_files/t_end_data.csv"
-path_save <- "../../Result/Gierer/Circle_figures/Zero_holes_end.pdf"
-limit_grid <- 2.6
-plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T)
-# Several end-points 
-path_save <- "../../Result/Gierer/Circle_figures/Zero_holes_end_several.pdf"
-plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
-
-# Five holes 
-path_data <- "../../Intermediate/Gierer_files/Circles/Five_holes_files/t_end_data.csv"
-path_save <- "../../Result/Gierer/Circle_figures/Five_holes_end.pdf"
-limit_grid <- 2.6
-plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T)
-# Several end-points 
-path_save <- "../../Result/Gierer/Circle_figures/Five_holes_end_several.pdf"
-plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
-
-## Twenty holes 
-path_data <- "../../Intermediate/Gierer_files/Circles/Twenty_holes_files/t_end_data.csv"
-path_save <- "../../Result/Gierer/Circle_figures/Twenty_holes_end.pdf"
-limit_grid <- 2.6
-plot_t_end_data(path_data, path_save, limit_grid, plot_result = F, is_circle = T)
-# Several end-points 
-path_save <- "../../Result/Gierer/Circle_figures/Twenty_holes_end_several.pdf"
-plot_several_end_times(path_data, path_save, limit_grid, is_circle = T)
-
-
-# Improve how a certain signature is processed 
-model <- "Schankenberg"
-
-  
