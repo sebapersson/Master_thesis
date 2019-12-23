@@ -236,7 +236,8 @@ process_experiment <- function(model, geom_list, sign, save_tag, n_cores=1)
   # Loop over the geometries 
   for(geom in geom_list){
     path_files <- str_c("../../Intermediate/", model, "_files/", geom, "/")
-    file_list <- list.files(path_files)[str_detect(list.files(path_files), sign)]
+    file_list <- do.call(c, lapply(sign, function(i) {
+      list.files(path_files)[str_detect(list.files(path_files), i)]}))
     
     # Save guard if regex fails
     if(length(file_list) != 3){
@@ -296,3 +297,27 @@ geom_list <- c("Rectangles", "Circles")
 process_experiment(model="Schankenberg", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
 process_experiment(model="Gierer", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
 
+# Process the case when the initial value is disturbed (at a specific region)
+geom_list <- c("Rectangles", "Circles")
+sign_list <- c("dr0D25x0y1D0", "dr0D25x0D5y0D25", "dr0D25x1D05y0D25")
+process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
+process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_", n_cores=3)
+
+  
+
+path_data <-"../../Intermediate/Illustration/Schankenberg_illustration.csv"
+data_tot <- read_csv(path_data, col_types = cols()) %>%
+  select(-X1) 
+
+u1_list <- seq(from = 1, by = 2, to = nrow(data_tot))
+data_u1 <- data_tot[u1_list, ]
+
+index_list <- c(1, 10, 20, 40, 70)
+t_index <- unique(data_tot$t)[index_list]
+
+i < -1
+data_t <- data_u1 %>% filter(t == t_index[i])
+
+#ggplot(data_t, aes(x, u1)) +
+#  geom_line() + 
+#  my_theme
