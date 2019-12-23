@@ -135,7 +135,7 @@ class file_locations_class:
             self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
             self.pwd_folder = ("../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + 
                               "_d" + "r" + r + "x" + x_mid + "y" + y_mid +  "_k/")
-            self.file_save_folder = ("../../../Intermediate/" + model + "_files/" + geometry + "h" + hole + 
+            self.file_save_folder = ("../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + 
                               "_d" + "r" + r + "x" + x_mid + "y" + y_mid +  "_k/")
             self.model = model
         # Rename save-folders if the aim is to find the mesh-size
@@ -344,6 +344,11 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
     t = 0
     U = Function(V)
     U.assign(u_n)
+    
+    # Write the first time-step
+    _u_1, _u_2, = U.split()
+    vtkfile_u_1 << (_u_1, t)
+    vtkfile_u_2 << (_u_2, t)
     
     # Solving a linear system, all non-linear into last-vector 
     FA = lhs(F)
@@ -665,7 +670,7 @@ def run_rd_sim(param, t_opt, model, geom, times_run, hole_list, ic_list=None, di
         for seed in seed_list:
             solve_rd_system(t_opt, param, geom, model, hole_list, seed=seed)
     # If the initial are controlled 
-    elif ic_list != None and diff_par == None:
+    elif ic_list != None and diff_par_list == None:
         for seed in seed_list:
             solve_rd_system(t_opt, param, geom, model, hole_list, ic_par=ic_list, ic_controlled=True, seed=seed)
     # If different parameters are used 
