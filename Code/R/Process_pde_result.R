@@ -104,10 +104,10 @@ plot_max_conc_data <- function(file_list, geometry, path_save, plot_data=T)
     geom_ribbon(aes(ymin = quant_low, ymax = quant_high), color = NA, alpha = 0.2) + 
     labs(x = "Time", y = "Maximum concentration") + 
     scale_color_manual(values = cbPalette[-1]) + 
+    scale_fill_manual(values = cbPalette[-1]) + 
     my_theme
   
-  p1
-  ggsave(path_save, height = 6, width = 9)
+  ggsave(path_save, plot=p1, height = 6, width = 9)
   
   if(plot_data == T) print(p1)
 }
@@ -187,8 +187,7 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
   
   # Plot the list and write to file   
   p1 <- ggpubr::ggarrange(plotlist = plot_list, ncol = 5, nrow = 2, common.legend = T, legend = "bottom")
-  p1
-  ggsave(path_save, height = 6, width = 12)
+  ggsave(path_save, plot=p1, height = 6, width = 12)
   
 }
 
@@ -290,39 +289,92 @@ process_experiment <- function(model, geom_list, sign, save_tag, hole_list=c(0, 
   }
 }
 
+
+# Function that will process and plot an illustration case, where the pde in questions 
+# are solved in one dimension. 
+# Args:
+#   path_data, the path to the data 
+#   path_save, the path to where the result is saved 
+#   t_index, the time-indices to plot (should be five)
+plot_illustration_case <- function(path_data, path_save, t_index)
+{
+  
+  # Check that the directory where to save the result exist
+  check_if_dir_exists("../../Result/Illustration")
+  
+  data_tot <- read_csv(path_data, col_types = cols(id_mol = col_factor())) %>%
+    select(-X1) %>%
+    select(-u2) %>% 
+    rename("conc" = "u1") 
+  
+  t_points <- unique(data_tot$t)[t_index]
+  
+  plot_list <- lapply(t_points, function(i){
+    data_t <- data_tot %>%
+      filter(t == i)
+    
+    # For being able to compare the two cases 
+    min_u1 <- min((data_tot %>% filter(id_mol == 1))$conc)
+    min_u2 <- min((data_tot %>% filter(id_mol == 2))$conc)
+    
+    max_u1_tot <- max((data_tot %>% filter(id_mol == 1))$conc)
+    min_u1_tot <- min((data_tot %>% filter(id_mol == 1))$conc)
+    
+    # Scale the data 
+    data_t <- data_t %>%
+      mutate(conc_s = case_when(
+        id_mol == 1 ~ conc - min_u1, 
+        id_mol == 2 ~ conc - min_u2))
+    
+    text_write = str_c("t = ", as.character(round(i, digits = 2)))
+    
+    p1 <- ggplot(data_t, aes(x, conc_s, color = id_mol)) +
+      geom_line(size = 1.1) + 
+      annotate("text", x = Inf, y = Inf, label = text_write, hjust = 1.4, vjust = 2) + 
+      scale_color_manual(values = cbPalette[-1]) + 
+      my_theme + 
+      theme(axis.text.y = element_blank(), 
+            axis.ticks.y = element_blank(), 
+            axis.title.y.left = element_blank(), 
+            legend.title = element_blank()) + 
+      ylim(0, max_u1_tot) 
+    return(p1)})
+  
+  plot <- ggpubr::ggarrange(plotlist = plot_list, common.legend = T, ncol = 5, legend="bottom")
+  ggsave(path_save, plot, height = 6, width = 12)
+}
+
 # ===============================================================================================
 # Analyse the data 
 # ===============================================================================================
 # Process the lc-results
-process_lc_data("Schankenberg", "Rectangles")
-process_lc_data("Schankenberg", "Circles")
+#process_lc_data("Schankenberg", "Rectangles")
+#process_lc_data("Schankenberg", "Circles")
 
 # Process non-controlled disturbance case 
 geom_list <- c("Rectangles", "Circles")
-process_experiment(model="Schankenberg", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
-process_experiment(model="Gierer", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
+#process_experiment(model="Schankenberg", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
+#process_experiment(model="Gierer", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
 
 # Process the case when the initial value is disturbed (at a specific region)
 geom_list <- c("Rectangles", "Circles")
-sign_list <- c("dr0D25x0y1D0", "dr0D25x0D5y0D25", "dr0D25x1D05y0D25")
+sign_list <- c("h0_dr0D25x0y0_k$", "h5_dr0D25x-0D15y0D5_k$", "h20_dr0D25x0D55y1D05_k$")
 process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
-process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_", n_cores=3)
+process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
 
-  
 
-path_data <-"../../Intermediate/Illustration/Schankenberg_illustration.csv"
-data_tot <- read_csv(path_data, col_types = cols()) %>%
-  select(-X1) 
+# Process when a subdomain has different parameters, note different models have diff param
+geom_list <- c("Rectangles", "Circles")
+sign_list <- c("h5d_ka0D5b2D0ga10di100", "h20d_ka0D5b2D0ga10di100")
+process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
+sign_list <- c("h5d_ka0D6b2D0ga20di50$", "h20d_ka0D6b2D0ga20di50$")
+process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_k_sub", n_cores=3)
 
-u1_list <- seq(from = 1, by = 2, to = nrow(data_tot))
-data_u1 <- data_tot[u1_list, ]
 
-index_list <- c(1, 10, 20, 40, 70)
-t_index <- unique(data_tot$t)[index_list]
+# Process the illustration example 
+path_data <- "../../Intermediate/Illustration/Schankenberg_illustration.csv"
+path_save <- "../../Result/Illustration/Schankenberg.pdf"
+t_index <- c(1, 20, 40, 50, 74)
+plot_illustration_case(path_data, path_save, t_index)
 
-i < -1
-data_t <- data_u1 %>% filter(t == t_index[i])
 
-#ggplot(data_t, aes(x, u1)) +
-#  geom_line() + 
-#  my_theme
