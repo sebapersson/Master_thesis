@@ -359,15 +359,15 @@ geom_list <- c("Rectangles", "Circles")
 # Process the case when the initial value is disturbed (at a specific region)
 geom_list <- c("Rectangles", "Circles")
 sign_list <- c("h0_dr0D25x0y0_k$", "h5_dr0D25x-0D15y0D5_k$", "h20_dr0D25x0D55y1D05_k$")
-process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
-process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
+#process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
+#process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
 
 
 # Process when a subdomain has different parameters, note different models have diff param
 geom_list <- c("Rectangles", "Circles")
-sign_list <- c("h5d_ka0D5b2D0ga10di100", "h20d_ka0D5b2D0ga10di100")
-process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
-sign_list <- c("h5d_ka0D6b2D0ga20di50$", "h20d_ka0D6b2D0ga20di50$")
+sign_list <- c("h5_d_ka0D5b2D0ga10di100", "h20_d_ka0D5b2D0ga10di100")
+process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_k_sub", n_cores=3)
+sign_list <- c("h5_d_ka0D6b2D0ga20di50$", "h20_d_ka0D6b2D0ga20di50$")
 process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_k_sub", n_cores=3)
 
 
