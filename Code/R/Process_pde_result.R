@@ -372,9 +372,14 @@ process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag
 
 
 # Process the illustration example 
+# Schankenberg 
 path_data <- "../../Intermediate/Illustration/Schankenberg_illustration.csv"
 path_save <- "../../Result/Illustration/Schankenberg.pdf"
 t_index <- c(1, 20, 40, 50, 74)
 plot_illustration_case(path_data, path_save, t_index)
 
-
+# Gierer 
+path_data <- "../../Intermediate/Illustration/Gierer_illustration.csv"
+path_save <- "../../Result/Illustration/Gierer.pdf"
+t_index <- c(1, 80, 85, 90, 100)
+plot_illustration_case(path_data, path_save, t_index)

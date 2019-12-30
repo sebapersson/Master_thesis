@@ -15,6 +15,14 @@ class t_opt_class:
         self.t_end = t_end
         self.n_time_step = n_time_step
 
+# Class to hold the parameters for the Gierer-Meinhardt model
+class param_gierer:
+    def __init__(self, a=0.5, b=2.0, gamma=100.0, d=50.0):
+        self.a = a
+        self.b = b
+        self.gamma = gamma
+        self.d = d
+
 # Class to hold the parameters for the Schankenberg model 
 class param_schankenberg:
     def __init__(self,a=0.2,b=2.0,gamma=100.0,d=50.0):
@@ -29,10 +37,11 @@ class ic(UserExpression):
         self.u0_1 = kwargs.pop('u0_1')
         self.u0_2 = kwargs.pop('u0_2')
         self.sigma = kwargs.pop('sigma')
+        self.x_max = kwargs.pop('x_max')
         super(ic, self).__init__(*args, **kwargs)
         
     def eval(self,values,x):
-        if x[0] > 4.9 and x[0] < 5.1:
+        if x[0] > (self.x_max / 2 - 0.1) and x[0] < (self.x_max / 2 + 0.1):
             values[0] = self.u0_1 + np.absolute(np.random.normal(scale = self.sigma))
             values[1] = self.u0_2
         else:
@@ -51,22 +60,29 @@ class ic(UserExpression):
 #    t_opt, a t-opt class object (contains time-data)
 #    x_max, the maximum x-coordinate
 #    dir_save, the path to the directory to where the result is saved
-#    filve_save, path to the file where result is saved 
+#    file_save, path to the file where result is saved
+#    model, the model that is solved 
 #    seed, the model seed (deafult 123)
-def fem_illustration(param, t_opt, dir_save, file_save, x_max=10, seed=123):
+def fem_illustration(param, t_opt, dir_save, file_save, model="Schankenberg", x_max=10, seed=123):
     
     np.random.seed(seed)
     t_end = t_opt.t_end
     n_time_step = t_opt.n_time_step
-    
     
     # Time parameters 
     dt_inv = 1 / (t_end / n_time_step)
     dt = t_end / n_time_step
     
     # The initial steady state
-    u0_1 = param.a + param.b
-    u0_2 = (u0_1 - param.a) / (u0_1**2)
+    if model == "Schankenberg":
+        u0_1 = param.a + param.b
+        u0_2 = (u0_1 - param.a) / (u0_1**2)
+    elif model == "Gierer":
+        u0_1 = (param.a + 1) / param.b
+        u0_2 = u0_1 ** 2
+    else:
+        print("Error: model {} isn't an option".format(model))
+        sys.exit(1)
     
     # Function space to solve problem in 
     mesh = IntervalMesh(1500, 0, x_max)
@@ -77,7 +93,7 @@ def fem_illustration(param, t_opt, dir_save, file_save, x_max=10, seed=123):
     V = FunctionSpace(mesh, element)
     
     # Expression for the initial conditions 
-    u0_exp = ic(u0_1 = u0_1, u0_2 = u0_2, sigma = 0.05, element = V.ufl_element())
+    u0_exp = ic(u0_1=u0_1, u0_2=u0_2, sigma=0.05, x_max=x_max, element=V.ufl_element())
     
     # Test functions, and initial values
     u_n = Function(V)
@@ -93,9 +109,14 @@ def fem_illustration(param, t_opt, dir_save, file_save, x_max=10, seed=123):
     d = Constant(param.d)
     gamma = Constant(param.gamma)
     
-    F = dt_inv*(u_1 - u_n1)*v_1*dx - gamma*(a - u_n1 + (u_n1**2)*u_n2)*v_1*dx \
-        + inner(grad(u_1), grad(v_1))*dx + dt_inv*(u_2 - u_n2)*v_2*dx \
-        - gamma*(b - (u_n1**2)*u_n2)*v_2*dx + d*inner(grad(u_2), grad(v_2))*dx
+    if model == "Schankenberg":
+        F = dt_inv*(u_1 - u_n1)*v_1*dx - gamma*(a - u_n1 + (u_n1**2)*u_n2)*v_1*dx \
+            + inner(grad(u_1), grad(v_1))*dx + dt_inv*(u_2 - u_n2)*v_2*dx \
+            - gamma*(b - (u_n1**2)*u_n2)*v_2*dx + d*inner(grad(u_2), grad(v_2))*dx
+    elif model == "Gierer":
+        F = dt_inv*(u_1 - u_n1)*v_1*dx - gamma*(a - b * u_n1 + (u_n1**2) / u_n2)*v_1*dx \
+            + inner(grad(u_1), grad(v_1))*dx + dt_inv*(u_2 - u_n2)*v_2*dx \
+            - gamma*(u_n1 ** 2 - u_n2)*v_2*dx + d*inner(grad(u_2), grad(v_2))*dx
     
     t = 0
     U = Function(V)
@@ -162,10 +183,20 @@ def fem_illustration(param, t_opt, dir_save, file_save, x_max=10, seed=123):
     data_to_save["id_mol"] = test
     data_to_save.to_csv(file_save)
     
+    plot(_u_1)
+    plt.show()
 
-
+# Schankenberg model, run illustration case 
 t_opt = t_opt_class(7.5, 1500)
 param = param_schankenberg(gamma=5, d=200)
 dir_save = "../../../Intermediate/Illustration/"
 file_save = dir_save + "Schankenberg_illustration.csv"
-fem_illustration(param, t_opt, dir_save, file_save)
+#fem_illustration(param, t_opt, dir_save, file_save)
+
+# Gierer model, run illustration case 
+t_opt = t_opt_class(1.5, 2000)
+param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
+dir_save = "../../../Intermediate/Illustration/"
+file_save = dir_save + "Gierer_illustration.csv"
+fem_illustration(param, t_opt, dir_save, file_save, x_max= 4, model="Gierer")
+
