@@ -57,6 +57,7 @@ a_100 = calc_a_upper(u0_100, d)
 b_100 = (a_100 + 1) / u0_100
 
 # Plotting the different curves
+plt.style.use(plt.style.available[17])
 f = plt.figure(figsize=(9, 6))
 col = '#000000'
 plt.plot(b_lower, a_lower, linewidth=2.5, color = col)

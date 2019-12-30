@@ -46,6 +46,8 @@ a_inf = 0.5 * u0_inf
 b_inf = u0_inf - a_inf
 
 # Plotting the different curves
+plt.style.use(plt.style.available[17])
+
 f = plt.figure(figsize=(9, 6))
 col = '#000000'
 plt.plot(b_low, a_low, linewidth=2.5, color = col)
