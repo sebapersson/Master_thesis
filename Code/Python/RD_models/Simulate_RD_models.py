@@ -5,12 +5,27 @@ import pandas as pd
 from dolfin import *
 import meshio
 import os
-import sys 
+import sys
+import time 
 from tqdm import tqdm
 
 # -----------------------------------------------------------------------------------
 # Classes for solving the problem
 # -----------------------------------------------------------------------------------
+
+# Class to hold the information when sanity checking the solutions, tag is a user-added
+# ending to know which experiment is sanity checked. 
+class file_loc_sanity_check:
+    def __init__(self, geom, n_holes, model, tag):
+        if n_holes == "Zero_holes":
+            hole = "h0_"
+        elif n_holes == "Five_holes":
+            hole = "h5_"
+        elif n_holes == "Twenty_holes":
+            hole = "h20_"
+        self.mesh_folder = "../../../Intermediate/" + geom + "_mesh/" + n_holes + "_mesh/"
+        self.pwd_folder = "../../../Result/" + model + "/" + geom + "/pwd_files/sanity_check/" + tag + "/" + hole
+        self.model = model
 
 # Class object to hold which sub-domains will have changed parameters
 # values, and what the parameter values are changed to. 
@@ -153,9 +168,9 @@ class file_locations_class:
             a, b, gamma, d = diff_para.convert_to_str()
             self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
             self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
-            self.pwd_folder = ("../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + "d_k" +
+            self.pwd_folder = ("../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + "_d_k" +
                                "a" + a + "b" + b + "ga" + gamma + "di" + d)
-            self.file_save_folder = ("../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "d_k" +
+            self.file_save_folder = ("../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "_d_k" +
                                      "a" + a + "b" + b + "ga" + gamma + "di" + d + "/")
             self.model = model 
         else:
@@ -557,6 +572,139 @@ def solve_fem(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, 
     
 
 
+# Function that will solve the FEM-problem using the explicit-implicit solver but only
+# output the pwd-files. The main goal of this function is to sanity check the result
+# by creating several pwd-files, where every tenth file will be saved.
+# Args:
+#    param, the model parameters (class object)
+#    mesh_folder, the path to the mesh folder
+#    t_opt, a class object containing the t-options
+#    model, the model that is run
+#    init_par, the initial value parameters 
+#    pwd_folder, the folder where the pwd-result is stored
+#    seed, a user set seed
+def fem_sanity_check(param, mesh_folder, t_opt, ic_par, pwd_folder, model, seed, diff_para=None):
+    
+    # Setting the seed to reproduce the result 
+    np.random.seed(seed)
+    
+    dx_index_list = [1]
+    t_end = t_opt.t_end
+    n_time_step = t_opt.n_time_step
+    
+    # Reading the mesh into FeniCS 
+    mesh = Mesh()
+    with XDMFFile(mesh_folder + "mesh.xdmf") as infile:
+        infile.read(mesh)
+    
+    # Reading the triangle subdomains and storing them 
+    sub_domains_pre = MeshValueCollection("size_t", mesh, 2)
+    with XDMFFile(mesh_folder + "subdomains.xdmf") as infile:
+        infile.read(sub_domains_pre, "name_to_read")
+    sub_domains = cpp.mesh.MeshFunctionSizet(mesh, sub_domains_pre)
+    
+    # Reading the line boundaries and storing them 
+    line_domain_pre = MeshValueCollection("size_t", mesh, 1)
+    with XDMFFile(mesh_folder + "lines.xdmf") as infile:
+        infile.read(line_domain_pre, "name_to_read")
+    line_domain = cpp.mesh.MeshFunctionSizet(mesh, line_domain_pre)
+    
+    # Only display potential errors when solving the PDE-system 
+    set_log_level(40)
+    
+    # List to hold the current fem-models
+    fem_models = [formulate_FEM_schnakenberg, formulate_FEM_gierer]
+    
+    # Initial values for the model Schankenberg model
+    if model == "Schankenberg":
+        u0_1 = param.a + param.b
+        u0_2 = (u0_1 - param.a) / (u0_1**2)
+        formulate_FEM = fem_models[0]
+    elif model == "Gierer":
+        u0_1 = (param.a + 1) / param.b
+        u0_2 = u0_1 ** 2
+        formulate_FEM = fem_models[1]
+    else:
+        print("Error, invalid model name")
+        sys.exit(1)
+    
+    # Step size in t, use dt_inf for numerical precision 
+    dt_inv = 1 / (t_end / n_time_step)
+    dt = t_end / n_time_step
+    
+    # Standard Lagrange elements
+    P1 = FiniteElement('P', mesh.ufl_cell(), 1)
+    element = MixedElement([P1, P1])
+    
+    # Function space to approximate solution in 
+    V = FunctionSpace(mesh, element)
+    u_n = Function(V)
+    
+    # Expression for the initial conditions 
+    u0_exp = ic(u0_1 = u0_1, u0_2 = u0_2, sigma = 0.05,
+                init_param=ic_par, element = V.ufl_element())
+    
+    # Test functions, and initial values 
+    v_1, v_2 = TestFunctions(V)
+    u_n.interpolate(u0_exp)
+    u_n1, u_n2 = split(u_n)
+    
+    dx = Measure("dx", domain=mesh, subdomain_data=sub_domains)
+    ds = Measure("ds", domain=mesh, subdomain_data=line_domain)
+    dS = Measure("dS", domain=mesh, subdomain_data=line_domain)
+    
+    # Solve the FEM-equations 
+    F = 0
+    
+    u_1, u_2 = TrialFunctions(V)
+    for i in dx_index_list:
+        F += formulate_FEM(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
+    
+    # Add sub-regions with different parameter values 
+    if diff_para != None:
+        for i in diff_para.dx_list:
+            F += formulate_FEM(diff_para.param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
+    
+    # Solve the actual problem
+    file1 = pwd_folder + "/u_1.pvd"
+    file2 = pwd_folder + "/u_2.pvd"
+    vtkfile_u_1 = File(file1)
+    vtkfile_u_2 = File(file2)
+    
+    # Solving the problem in time
+    t = 0
+    U = Function(V)
+    U.assign(u_n)
+    
+    # Write the first time-step
+    _u_1, _u_2, = U.split()
+    vtkfile_u_1 << (_u_1, t)
+    vtkfile_u_2 << (_u_2, t)
+    
+    # Solving a linear system, all non-linear into last-vector 
+    FA = lhs(F)
+    Fb = rhs(F)
+    A = assemble(FA, keep_diagonal = True)
+    A.ident_zeros()
+    
+    for n in tqdm(range(n_time_step)):
+        
+        # Update time-step
+        t += dt
+        
+        # Solve linear variational problem for time step
+        b = assemble(Fb)
+        solve(A,  U.vector(), b)        
+        
+        _u_1, _u_2, = U.split()
+        # Save current time-step to file (only save every tenth step)
+        if n % 10 == 0 or n == 1:
+            vtkfile_u_1 << (_u_1, t)
+            vtkfile_u_2 << (_u_2, t)
+        
+        u_n.assign(U)
+    
+
 # Function that will run the find-mesh size experiment by solving the PDE on different
 # size meshes.
 # Args:
@@ -679,4 +827,39 @@ def run_rd_sim(param, t_opt, model, geom, times_run, hole_list, ic_list=None, di
             solve_rd_system(t_opt, param, geom, model, hole_list, diff_par_list=diff_par_list, seed=seed)
 
 
+# Function that will perform the sanity check of the long-time simulation results by using random seeds
+# given by the time-command. Note that both models are checked. Note that param_list etc contains
+# the parameters for both model (Schankenberg and Gierer), where Schankenberg is the first model, hence
+# input argument order is important 
+# Args:
+#     param_list, the model parameters
+#     t_opt_list, the time options
+#     times_run, the number of times to run the sanity check
+#     tag, a tag for keeping tab on the experiment 
+#     ic_par, the initial condition parameters
+#     par_diff_list, the different parameters (None by default)
+#     geom, the geometry (default circle)
+#     n_holes, the number of holes (default five)
+def sanity_check(param_list, t_opt_list, times_run, ic_par, tag, par_diff_list=None, geom="Circles", n_holes="Five_holes"):
+    
+    # Set the file-locations
+    model_list = ["Schankenberg", "Gierer"]
+    j = 0
+    for model in model_list:
+        file_loc = file_loc_sanity_check(geom, n_holes, model, tag)
+        param = param_list[j]
+        t_opt = t_opt_list[j]
+        if par_diff_list != None:
+            diff_para = par_diff_list[j]
+        else:
+            diff_para = None
+        j += 1 
+        
+        print("Model = {}, tag = {}".format(model, tag))
+        for i in range(times_run):
+            # Random time-seed
+            seed = int(time.time())
+            pwd_folder = file_loc.pwd_folder + str(int(i+1))
+            fem_sanity_check(param, file_loc.mesh_folder, t_opt, ic_par, pwd_folder,
+                             model=file_loc.model, seed=seed, diff_para=diff_para)
 
