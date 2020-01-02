@@ -24,7 +24,7 @@ param = param_gierer(b = 2.0, a = 0.5, gamma = 20, d = 50)
 # ==================================================================================
 # Running simulations without a specific disturbance in the steady state
 # ==================================================================================
-print("Solving without controlled disturbance")
+print("Running without controlled disturbance")
 hl = ["Zero_holes", "Five_holes", "Twenty_holes"]
 # Schankenberg
 param = param_schankenberg(gamma=10, d=100)
@@ -66,6 +66,7 @@ t_opt = t_opt_class(1.5, 2000)
 # Running simulations with disturbed parameters
 # ==================================================================================
 hl = ["Five_holes", "Twenty_holes"]
+print("Running with different parameters in sub-region")
 
 # Schankenberg
 param = param_schankenberg(gamma=10, d=100)

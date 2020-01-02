@@ -538,7 +538,6 @@ def solve_fem(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, 
         solve_backward_euler(V, F, u, u_n, dt, folder_save, n_time_step)
         
     elif use_backward == False:
-        print("Solving using the forward Euler method")
         u_1, u_2 = TrialFunctions(V)
         for i in dx_index_list:
             F += formulate_FEM(param, u_1, u_2, v_1, v_2, u_n1, u_n2, dt_inv, dx(i))
@@ -787,12 +786,13 @@ def solve_rd_system(t_opt, param, geometry="Rectangles", model="Schankenberg", h
         else:
             diff_par_i = diff_par_list[i]
         
+        print("Number of holes = {}".format(hole_list[i]))
+        
         # Fix the mesh
         file_loc = file_locations_class(hole_list[i], geometry, model, ic_par_i, ic_controlled, diff_para=diff_par_i)
         read_and_convert_mesh(file_loc)
         
         # Solve the zero holes case 
-        print("Solving PDE {} with {}".format(geometry, hole_list[i]))
         dx_index_list = [1]
         solve_fem(param, t_end, n_time_step, dx_index_list, file_loc, ic_par_i, diff_par_i, seed=seed)
     
@@ -815,16 +815,25 @@ def run_rd_sim(param, t_opt, model, geom, times_run, hole_list, ic_list=None, di
     
     # Solve the system, first case if initial aren't controlled
     if ic_list == None and diff_par_list == None:
+        k = 1
         for seed in seed_list:
+            print("Model = {}, k = {} / {}, geom = {}".format(mode, k, times_run, geom))
             solve_rd_system(t_opt, param, geom, model, hole_list, seed=seed)
+            k += 1
     # If the initial are controlled 
     elif ic_list != None and diff_par_list == None:
+        k = 1
         for seed in seed_list:
+            print("Model = {}, k = {} / {}, geom = {}".format(mode, k, times_run, geom))
             solve_rd_system(t_opt, param, geom, model, hole_list, ic_par=ic_list, ic_controlled=True, seed=seed)
+            k += 1
     # If different parameters are used 
     elif diff_par_list != None and ic_list == None:
+        k = 1
         for seed in seed_list:
+            print("Model = {}, k = {} / {}, geom = {}".format(mode, k, times_run, geom))
             solve_rd_system(t_opt, param, geom, model, hole_list, diff_par_list=diff_par_list, seed=seed)
+            k += 1
 
 
 # Function that will perform the sanity check of the long-time simulation results by using random seeds
