@@ -172,7 +172,19 @@ class file_locations_class:
                                "a" + a + "b" + b + "ga" + gamma + "di" + d)
             self.file_save_folder = ("../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "_d_k" +
                                      "a" + a + "b" + b + "ga" + gamma + "di" + d + "/")
-            self.model = model 
+            self.model = model
+        # The case where parameters are controlled and there is an initial disturbance
+        elif diff_para != None and controlled_inital == True:
+            a, b, gamma, d = diff_para.convert_to_str()
+            self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
+            self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
+            self.pwd_folder = ("../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole 
+                              + "_d" + "r" + r + "x" + x_mid + "y" + y_mid +  "_k" 
+                              + "a" + a + "b" + b + "ga" + gamma + "di" + d)
+            self.file_save_folder = ("../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole 
+                                    + "_d" + "r" + r + "x" + x_mid + "y" + y_mid +  "_k" 
+                                    + "a" + a + "b" + b + "ga" + gamma + "di" + d + "/")
+            self.model = model
         else:
             print("Error, improper file-locations entry")
             sys.exit(1)
@@ -817,22 +829,29 @@ def run_rd_sim(param, t_opt, model, geom, times_run, hole_list, ic_list=None, di
     if ic_list == None and diff_par_list == None:
         k = 1
         for seed in seed_list:
-            print("Model = {}, k = {} / {}, geom = {}".format(mode, k, times_run, geom))
+            print("Model = {}, k = {} / {}, geom = {}".format(model, k, times_run, geom))
             solve_rd_system(t_opt, param, geom, model, hole_list, seed=seed)
             k += 1
     # If the initial are controlled 
     elif ic_list != None and diff_par_list == None:
         k = 1
         for seed in seed_list:
-            print("Model = {}, k = {} / {}, geom = {}".format(mode, k, times_run, geom))
+            print("Model = {}, k = {} / {}, geom = {}".format(model, k, times_run, geom))
             solve_rd_system(t_opt, param, geom, model, hole_list, ic_par=ic_list, ic_controlled=True, seed=seed)
             k += 1
     # If different parameters are used 
     elif diff_par_list != None and ic_list == None:
         k = 1
         for seed in seed_list:
-            print("Model = {}, k = {} / {}, geom = {}".format(mode, k, times_run, geom))
+            print("Model = {}, k = {} / {}, geom = {}".format(model, k, times_run, geom))
             solve_rd_system(t_opt, param, geom, model, hole_list, diff_par_list=diff_par_list, seed=seed)
+            k += 1
+    # If different parameters and controlled disturbance occurs
+    elif diff_par_list != None and ic_list != None:
+        k = 1
+        for seed in seed_list:
+            print("Model = {}, k = {} / {}, geom = {}".format(model, k, times_run, geom))
+            solve_rd_system(t_opt, param, geom, model, hole_list, ic_par=ic_list, diff_par_list=diff_par_list, ic_controlled=True, seed=seed)
             k += 1
 
 
