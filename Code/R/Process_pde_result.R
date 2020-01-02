@@ -1,5 +1,6 @@
 library(tidyverse)
 library(stringr)
+library(latex2exp)
 
 # General plotting parameters 
 my_theme <- theme_bw() + theme(plot.title = element_text(hjust = 0.5, size = 14, face="bold"), 
@@ -99,12 +100,13 @@ plot_max_conc_data <- function(file_list, geometry, path_save, plot_data=T)
               quant_low = quantile(Max_conc, 0.05),
               quant_high = quantile(Max_conc, 0.95)) 
   
-  p1 <- ggplot(data_tot_rec, aes(time, med, color = n_holes, fill = n_holes)) + 
+  p1 <- ggplot(data_tot_rec, aes(time, med, color = n_holes, fill = n_holes, linetype = n_holes)) + 
     geom_line(size = 1.2) + 
     geom_ribbon(aes(ymin = quant_low, ymax = quant_high), color = NA, alpha = 0.2) + 
     labs(x = "Time", y = "Maximum concentration") + 
-    scale_color_manual(values = cbPalette[-1]) + 
-    scale_fill_manual(values = cbPalette[-1]) + 
+    scale_color_manual(values = cbPalette[-1], name = "Number of holes") + 
+    scale_fill_manual(values = cbPalette[-1], name = "Number of holes") + 
+    scale_linetype_manual(values = c("solid", "dashed", "dotted"), name = "Number of holes") + 
     my_theme
   
   ggsave(path_save, plot=p1, height = 6, width = 9)
@@ -320,23 +322,27 @@ plot_illustration_case <- function(path_data, path_save, t_index)
     max_u1_tot <- max((data_tot %>% filter(id_mol == 1))$conc)
     min_u1_tot <- min((data_tot %>% filter(id_mol == 1))$conc)
     
-    # Scale the data 
+    # Scale the data and make ready to plot 
     data_t <- data_t %>%
       mutate(conc_s = case_when(
         id_mol == 1 ~ conc - min_u1, 
-        id_mol == 2 ~ conc - min_u2))
+        id_mol == 2 ~ conc - min_u2)) %>%
+      mutate(id_mol = case_when(
+        id_mol == 1 ~ "A", 
+        id_mol == 2 ~ "I"))
     
     text_write = str_c("t = ", as.character(round(i, digits = 2)))
     
-    p1 <- ggplot(data_t, aes(x, conc_s, color = id_mol)) +
+    p1 <- ggplot(data_t, aes(x, conc_s, color = id_mol, linetype = id_mol)) +
       geom_line(size = 1.1) + 
       annotate("text", x = Inf, y = Inf, label = text_write, hjust = 1.4, vjust = 2) + 
-      scale_color_manual(values = cbPalette[-1]) + 
+      scale_color_manual(values = cbPalette[-c(1)]) + 
       my_theme + 
       theme(axis.text.y = element_blank(), 
             axis.ticks.y = element_blank(), 
             axis.title.y.left = element_blank(), 
-            legend.title = element_blank()) + 
+            legend.title = element_blank(), 
+            legend.text = element_text(size = 12)) + 
       ylim(0, max_u1_tot) 
     return(p1)})
   
@@ -344,26 +350,27 @@ plot_illustration_case <- function(path_data, path_save, t_index)
   ggsave(path_save, plot, height = 6, width = 12)
 }
 
+
 # ===============================================================================================
 # Analyse the data 
 # ===============================================================================================
 # Process the lc-results
-#process_lc_data("Schankenberg", "Rectangles")
-#process_lc_data("Schankenberg", "Circles")
+process_lc_data("Schankenberg", "Rectangles")
+process_lc_data("Schankenberg", "Circles")
 
 # Process non-controlled disturbance case 
 geom_list <- c("Rectangles", "Circles")
-#process_experiment(model="Schankenberg", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
-#process_experiment(model="Gierer", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
+process_experiment(model="Schankenberg", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
+process_experiment(model="Gierer", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
 
 # Process the case when the initial value is disturbed (at a specific region)
 geom_list <- c("Rectangles", "Circles")
 sign_list <- c("h0_dr0D25x0y0_k$", "h5_dr0D25x-0D15y0D5_k$", "h20_dr0D25x0D55y1D05_k$")
-#process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
-#process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
+process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
+process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
 
 
-# Process when a subdomain has different parameters, note different models have diff param
+# Process when a subdomain has different parameters, n  ote different models have diff param
 geom_list <- c("Rectangles", "Circles")
 sign_list <- c("h5_d_ka0D5b2D0ga10di100", "h20_d_ka0D5b2D0ga10di100")
 process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_k_sub", n_cores=3)
