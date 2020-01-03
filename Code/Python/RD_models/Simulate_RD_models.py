@@ -124,9 +124,11 @@ class param_gierer:
         self.gamma = gamma
         self.d = d
 
-# Class to hold the file-locations for a model, 
+# Class to hold the file-locations for a model, note that diff_para_original is a string that
+# will contain information if any of the standard parameters have been changed
 class file_locations_class:
-    def __init__(self, n_holes, geometry, model, ic_par, controlled_inital=False, find_mesh_size=False, lc="0", diff_para=None):
+    def __init__(self, n_holes, geometry, model, ic_par, controlled_inital=False, find_mesh_size=False,
+                 lc="0", diff_para=None):
         # If the initial values aren't controlled and not finding mesh-size
         if n_holes == "Zero_holes":
             hole = "0"
@@ -141,17 +143,17 @@ class file_locations_class:
         if controlled_inital == False and find_mesh_size == False and diff_para == None:
             self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
             self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
-            self.pwd_folder = "../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + "_d_k/"
-            self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "_d_k/"
+            self.pwd_folder = "../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + "_d_k"
+            self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "_d_k"
             self.model = model
         # Rename save-folders if initial values are controlled 
         elif controlled_inital == True and find_mesh_size == False and diff_para == None:
             self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
             self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
             self.pwd_folder = ("../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + 
-                              "_d" + "r" + r + "x" + x_mid + "y" + y_mid +  "_k/")
+                              "_d" + "r" + r + "x" + x_mid + "y" + y_mid +  "_k")
             self.file_save_folder = ("../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + 
-                              "_d" + "r" + r + "x" + x_mid + "y" + y_mid +  "_k/")
+                              "_d" + "r" + r + "x" + x_mid + "y" + y_mid +  "_k")
             self.model = model
         # Rename save-folders if the aim is to find the mesh-size
         elif find_mesh_size == True:
@@ -160,8 +162,8 @@ class file_locations_class:
             # Create the files 
             self.path_to_msh_file = "../../Gmsh/" + geometry + "/" + n_holes + ".msh"
             self.mesh_folder = "../../../Intermediate/" + geometry + "_mesh/" + n_holes + "_mesh/"
-            self.pwd_folder = "../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + "_lc" + lc + "/"
-            self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "_lc" + lc + "/"
+            self.pwd_folder = "../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + "_lc" + lc 
+            self.file_save_folder = "../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "_lc" + lc 
             self.model = model
         # The case the parameters have been disturbed
         elif diff_para != None and controlled_inital == False:
@@ -171,7 +173,7 @@ class file_locations_class:
             self.pwd_folder = ("../../../Result/" + model + "/" + geometry + "/pwd_files/" + "h" + hole + "_d_k" +
                                "a" + a + "b" + b + "ga" + gamma + "di" + d)
             self.file_save_folder = ("../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole + "_d_k" +
-                                     "a" + a + "b" + b + "ga" + gamma + "di" + d + "/")
+                                     "a" + a + "b" + b + "ga" + gamma + "di" + d)
             self.model = model
         # The case where parameters are controlled and there is an initial disturbance
         elif diff_para != None and controlled_inital == True:
@@ -183,11 +185,18 @@ class file_locations_class:
                               + "a" + a + "b" + b + "ga" + gamma + "di" + d)
             self.file_save_folder = ("../../../Intermediate/" + model + "_files/" + geometry + "/h" + hole 
                                     + "_d" + "r" + r + "x" + x_mid + "y" + y_mid +  "_k" 
-                                    + "a" + a + "b" + b + "ga" + gamma + "di" + d + "/")
+                                    + "a" + a + "b" + b + "ga" + gamma + "di" + d)
             self.model = model
         else:
             print("Error, improper file-locations entry")
             sys.exit(1)
+        
+    # Ensure that the save-locations are folders, and contain information
+    # about changes to the standard parameters
+    def change_standard_para(self, para_diff_str):
+        self.pwd_folder += para_diff_str
+        self.file_save_folder += para_diff_str
+        
 
 # -----------------------------------------------------------------------------------
 # Start of functions 
@@ -412,8 +421,11 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
         # Sanity check solution
         min_u1 = np.min(u1_vec)
         min_u2 = np.min(_u_2.vector().get_local())
-        if min_u1 < 0 or min_u2 < 0:
-            print("Error, negative concentration")
+        if min_u1 < 0:
+            print("Error, negative u1 concentration")
+            sys.exit(1)
+        elif min_u2 < 0:
+            print("Error, negative u2 concentration")
             sys.exit(1)
         
         # Update previous solution 
@@ -433,6 +445,43 @@ def solve_forward_euler(V, F, u_n, file_locations, dt, n_time_step):
         data_to_save.to_csv(file_save, header=False, mode='a')
     # Returning the states at the final time
     return _u_1, _u_2
+
+
+# Function that keep track of which parameter in the large region don't have
+# standard value, and thus returns a string with information about this
+# that is added to the file-name.
+# For Schankenberg standard is: a=0.2, b=2.0, gamma=10, d=100
+# For Gierer standard is: a=0.5, b=2.0, gamma=20, d=50
+# Args:
+#    file_locations, object that contains information of the model
+#    param, the parameters
+def check_param_against_standard(file_locations, param):
+    str_to_return = ""
+    a, b, gamma, d = param.a, param.b, param.gamma, param.d
+    if file_locations.model == "Schankenberg":
+        if a != 0.2 or b != 2.0 or gamma != 10.0 or d != 100:
+            str_to_return += "_K"
+            if a != 0.2:
+                str_to_return += "a" + str(a).replace(".", "D")
+            if b != 2.0:
+                str_to_return += "b" + str(b).replace(".", "D")
+            if gamma != 10:
+                str_to_return += "ga" + str(gamma).replace(".", "D")
+            if d != 100:
+                str_to_return += "d" + str(d).replace(".", "D")
+    elif file_locations.model == "Gierer":
+        if a != 0.5 or b != 2.0 or gamma != 20.0 or d != 50:
+            str_to_return += "_K"
+            if a != 0.5:
+                str_to_return += "a" + str(a).replace(".", "D")
+            if b != 2.0:
+                str_to_return += "b" + str(b).replace(".", "D")
+            if gamma != 20.0:
+                str_to_return += "ga" + str(gamma).replace(".", "D")
+            if d != 50:
+                str_to_return += "d" + str(d).replace(".", "D")
+    str_to_return += "/"
+    return str_to_return
 
 
 # Function that will solve the Schankenberg reaction diffusion system when the
@@ -495,6 +544,11 @@ def solve_fem(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, 
     else:
         print("Error, invalid model name")
         sys.exit(1)
+    
+    # Fix the file-save locations (if changes ocurred to standard parameters)
+    str_diff = check_param_against_standard(file_locations, param)
+    file_locations.change_standard_para(str_diff)
+    print(file_locations.pwd_folder)
     
     # Step size in t, use dt_inf for numerical precision 
     dt_inv = 1 / (t_end / n_time_step)
