@@ -479,7 +479,7 @@ def check_param_against_standard(file_locations, param):
             if gamma != 20.0:
                 str_to_return += "ga" + str(gamma).replace(".", "D")
             if d != 50:
-                str_to_return += "d" + str(d).replace(".", "D")
+                str_to_return += "di" + str(d).replace(".", "D")
     str_to_return += "/"
     return str_to_return
 
@@ -487,7 +487,10 @@ def check_param_against_standard(file_locations, param):
 # Function that will solve the Schankenberg reaction diffusion system when the
 # when the holes are defined via subdomains with zero flux and that the concentration
 # is zero within the holes. The mesh, with subdomains, is read from msh-file that
-# is converted to xdmf.
+# is converted to xdmf. Note that a set of standard parameters is assumed:
+# For Schankenberg: a=0.2, b=2.0, gamma=10, d=100
+# For Gierer: a=0.5, b=2.0, gamma=20, d=50
+# If different parameters are supplied it will be noted in the file-save names
 # Args:
 #     param, a parameter class object containing the parameters of the model
 #     t_end, the end time when solving the system
@@ -545,10 +548,10 @@ def solve_fem(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, 
         print("Error, invalid model name")
         sys.exit(1)
     
-    # Fix the file-save locations (if changes ocurred to standard parameters)
+    # Fix the file-save locations, this will change file-names
+    # if changes occurred to the standard parameters. 
     str_diff = check_param_against_standard(file_locations, param)
     file_locations.change_standard_para(str_diff)
-    print(file_locations.pwd_folder)
     
     # Step size in t, use dt_inf for numerical precision 
     dt_inv = 1 / (t_end / n_time_step)
