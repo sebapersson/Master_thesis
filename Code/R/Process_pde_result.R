@@ -1,6 +1,5 @@
 library(tidyverse)
 library(stringr)
-library(latex2exp)
 
 # General plotting parameters 
 my_theme <- theme_bw() + theme(plot.title = element_text(hjust = 0.5, size = 14, face="bold"), 
@@ -137,9 +136,11 @@ find_number_of_holes <- function(file_path)
 #   h, the resolution of the grid (0.05 by default)
 #   n_cores, the number of cores when doing grid search (3 by default)
 #   is_circle, true of the underlaying geometry is a circle 
+#   circle_data, contains information wheter or not a circle should be drawn 
 # Returns:
 #   void 
-plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_cores=3, is_circle=F, seed=123)
+plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_cores=3, is_circle=F, 
+                                   circle_data=F, seed=123)
 {
   
   set.seed(seed)
@@ -185,6 +186,15 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
             panel.grid.minor = element_blank(),
             panel.border = element_blank(),
             panel.background = element_blank()) 
+    
+    # If a circle should be drawn 
+    if(is.data.frame(circle_data)) p1 <- p1 + ggforce::geom_circle(data = circle_data, 
+                                                                   mapping = aes(x0=circle_data$x, 
+                                                                       y0=circle_data$y,
+                                                                       r=circle_data$r), 
+                                                                   inherit.aes = F, 
+                                                                   size = 1.0)
+    
     return(p1)})
   
   # Plot the list and write to file   
@@ -239,7 +249,9 @@ process_lc_data <- function(model, geom)
 #   sign, a signuare to get the experiment, note regex to avoid multiple matching
 #   save_tag, save tag for the maximum plot (should reflect the experiment)
 #   n_cores, the number of cores to use, by default 1
-process_experiment <- function(model, geom_list, sign, save_tag, hole_list=c(0, 20, 5), n_cores=1)
+#   draw_circle, wheter or not a circle will be drawn, if it should be a list with circle information for each
+#     file that is read. 
+process_experiment <- function(model, geom_list, sign, save_tag, hole_list=c(0, 20, 5), n_cores=1, draw_circle=F)
 {
   
   # Loop over the geometries 
@@ -285,15 +297,24 @@ process_experiment <- function(model, geom_list, sign, save_tag, hole_list=c(0, 
       path_save_mean <- str_c(t_end_mean, file, "_t_end_mean.pdf")
       path_save_several <- str_c(t_end_sev, file, "_t_end_sev.pdf")
       
-      plot_several_end_times(path_file, path_save_several, limit_grid, n_cores=n_cores, is_circle=is_circle)
-      plot_t_end_data(path_file, path_save_mean, limit_grid, plot_result = F, n_cores=n_cores, is_circle = is_circle)
-    }
+      # In the case a circle should be drawn in the t-end several plot 
+      if(is_tibble(draw_circle)){ 
+        circle_data <- draw_circle[i, ]
+      }else{ 
+        circle_data <- F
+      }
+      
+      plot_several_end_times(path_file, path_save_several, limit_grid, n_cores=n_cores, 
+                             is_circle=is_circle, circle_data=circle_data)
+      plot_t_end_data(path_file, path_save_mean, limit_grid, plot_result = F, n_cores=n_cores, 
+                      is_circle = is_circle)
+    }   
   }
 }
-
+  
 
 # Function that will process and plot an illustration case, where the pde in questions 
-# are solved in one dimension. 
+# is solved in one dimension. 
 # Args:
 #   path_data, the path to the data 
 #   path_save, the path to where the result is saved 
@@ -354,28 +375,77 @@ plot_illustration_case <- function(path_data, path_save, t_index)
 # ===============================================================================================
 # Analyse the data 
 # ===============================================================================================
-# Process the lc-results
-process_lc_data("Schankenberg", "Rectangles")
-process_lc_data("Schankenberg", "Circles")
+# Process the lc-results,
+# TODO: Processing of lc-data is currently broken 
+#process_lc_data("Schankenberg", "Rectangles")
+#process_lc_data("Schankenberg", "Circles")
 
 # Process non-controlled disturbance case 
 geom_list <- c("Rectangles", "Circles")
 process_experiment(model="Schankenberg", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
 process_experiment(model="Gierer", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
-
+  
 # Process the case when the initial value is disturbed (at a specific region)
 geom_list <- c("Rectangles", "Circles")
+circle_data <- tibble(x = c(0, -0.15, 0.55), y = c(0, 0.5, 1.05), r = 0.25)
 sign_list <- c("h0_dr0D25x0y0_k$", "h5_dr0D25x-0D15y0D5_k$", "h20_dr0D25x0D55y1D05_k$")
-process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
-process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", n_cores=3)
+process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", 
+                   n_cores=3, draw_circle = circle_data)
+process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", 
+                   n_cores=3, draw_circle = circle_data)
 
+# Information on where to draw the holes for the following plots 
+hole_five <- tibble(x = 0, y = 0, r = 0.25)
+hole_twenty <- tibble(x = 0.75, y = 0.85, r = 0.25)
+hole_both <- hole_five %>% bind_rows(hole_twenty)
 
-# Process when a subdomain has different parameters, n  ote different models have diff param
+# Process when a subdomain has different parameters, note different models have diff param
 geom_list <- c("Rectangles", "Circles")
-sign_list <- c("h5_d_ka0D5b2D0ga10di100", "h20_d_ka0D5b2D0ga10di100")
-process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_k_sub", n_cores=3)
+sign_list <- c("h5_d_ka0D5b2D0ga10di100$", "h20_d_ka0D5b2D0ga10di100$")
+process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_k_sub", 
+                   n_cores=3, draw_circle = hole_both)
 sign_list <- c("h5_d_ka0D6b2D0ga20di50$", "h20_d_ka0D6b2D0ga20di50$")
-process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_k_sub", n_cores=3)
+process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_k_sub", 
+                   n_cores=3, draw_circle = hole_both)
+
+
+# Process with subdomain parameters and stronger diffusion 
+geom_list <- geom_list <- c("Rectangles", "Circles")
+sign_list <- c("h5_d_ka0D6b2D0ga10di200_Kd200$")
+process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="test", 
+                   n_cores=3, draw_circle = hole_five)
+sign_list <- c("h5_d_ka0D65b2D0ga20di100_Kdi100$")
+process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="test", 
+                   n_cores=3, draw_circle = hole_five)
+
+# Process with very large activation 
+geom_list <- geom_list <- c("Rectangles", "Circles")
+sign_list <- c("h5_d_ka2D0b2D0ga10di100$")
+process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="test", 
+                   n_cores=3, draw_circle = hole_five)
+sign_list <- c("h5_d_ka2D0b2D0ga20di50$")
+process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="test", 
+                   n_cores=3, draw_circle = hole_five)
+ 
+
+# Process with very large activation and decreased break-down 
+geom_list <- geom_list <- c("Rectangles", "Circles")
+sign_list <- c("h5_d_ka2D5b0D2ga10di100_Kga5d800$")
+process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="test", 
+                   n_cores=3, draw_circle = hole_five)
+sign_list <- c("h5_d_ka2D0b0D5ga20di50$")
+process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="test", 
+                   n_cores=3, draw_circle = hole_five)
+
+
+# Process when both inital perturbation and parameters change 
+geom_list <- geom_list <- c("Rectangles", "Circles")
+sign_list <- c("h5_dr0D25x0D0y0D0_ka0D3b2D0ga15di50$", "h20_dr0D25x0D75y0D85_ka0D3b2D0ga15di50$")
+process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="test", 
+                   n_cores=3, draw_circle = hole_both)
+sign_list <- c("h5_dr0D25x0D0y0D0_ka0D6b2D0ga20di50", "h20_dr0D25x0D75y0D85_ka0D6b2D0ga20di50")
+process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="test", 
+                   n_cores=3, draw_circle = hole_both)
 
 
 # Process the illustration example 
