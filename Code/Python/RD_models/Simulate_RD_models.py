@@ -21,8 +21,13 @@ class file_loc_sanity_check:
             hole = "h0_"
         elif n_holes == "Five_holes":
             hole = "h5_"
+        elif n_holes == "Seven_holes":
+            hole = "h7_"
         elif n_holes == "Twenty_holes":
             hole = "h20_"
+        else:
+            print("Error, not allowed number of holes")
+            sys.exit(1)
         self.mesh_folder = "../../../Intermediate/" + geom + "_mesh/" + n_holes + "_mesh/"
         self.pwd_folder = "../../../Result/" + model + "/" + geom + "/pwd_files/sanity_check/" + tag + "/" + hole
         self.model = model
@@ -134,8 +139,14 @@ class file_locations_class:
             hole = "0"
         elif n_holes == "Five_holes":
             hole = "5"
+        elif n_holes == "Seven_holes":
+            hole = "7"
         elif n_holes == "Twenty_holes":
             hole = "20"
+        else:
+            print("Error: Invalid number of holes")
+            print("n_holes = {}".format(n_holes))
+            sys.exit(1)
         
         # Information about disturbing initial values
         r, x_mid, y_mid = ic_par.convert_str()
