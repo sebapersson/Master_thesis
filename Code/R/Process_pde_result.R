@@ -149,8 +149,8 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
     select(-X1) %>%
     filter(id_mol == 1)
   
-  # Using 10 to (else the plot will be to messy)
-  n_random_figs <- 10
+  # Using 5 to (else the plot will be to messy)
+  n_random_figs <- 5
   n_exp <- length(unique(data$id))
   id_to_plot <- sample(1:n_exp, n_random_figs, replace = F)
   
@@ -198,7 +198,7 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
     return(p1)})
   
   # Plot the list and write to file   
-  p1 <- ggpubr::ggarrange(plotlist = plot_list, ncol = 5, nrow = 2, common.legend = T, legend = "bottom")
+  p1 <- ggpubr::ggarrange(plotlist = plot_list, ncol = 5, nrow = 1, common.legend = T, legend = "bottom")
   ggsave(path_save, plot=p1, height = 6, width = 12)
   
 }

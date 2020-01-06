@@ -213,6 +213,40 @@ class file_locations_class:
 # Start of functions 
 # -----------------------------------------------------------------------------------
 
+# Function that will check if a model's parameters fulfill the classical Turing
+# conditions.
+# Args:
+#     param, a parameter object
+#     model, the model
+# Returns:
+#     True if the conditions are fulfilled, else false
+def check_if_param_fulfill_turing(param, model):
+    if model == "Gierer":
+        u = (param.a + 1) / param.b
+        v = u**2
+        fu = -param.b + 2 * u/v
+        fv = -1/u**2
+        gu = 2*u
+        gv = -1
+    elif model == "Schankenberg":
+        u = param.a + param.b
+        v = param.b / (param.a + param.b)**2
+        fu = 2*u*v - 1
+        fv = u**2
+        gu = -2*u*v
+        gv = -u**2
+    
+    # Check if the conditions are fulfilled 
+    cond1 = fu + gv < 0
+    cond2 = fu*gv - fv*gu > 0
+    cond3 = param.d*fu + gv > 0
+    cond4 = fu*gv - fv*gu < (param.d*fu +gv)**2/(4*param.d)
+    if cond1 and cond2 and cond3 and cond4:
+        return True
+    else:
+        return False
+
+
 # Function that will convert a mesh on .msh format to xdmf-format, and extract the
 # subdomains, the entire mesh, and lines for a 2d geometry. The result will be stored
 # in a used-provided folder.
@@ -522,6 +556,10 @@ def solve_fem(param, t_end, n_time_step, dx_index_list, file_locations, ic_par, 
     
     # Setting the seed to reproduce the result 
     np.random.seed(seed)
+    
+    # Check if the Turing-conditions are fulfilled
+    if not check_if_param_fulfill_turing(param, file_locations.model):
+        print("The model does not fulfill Turing instability")
     
     # Reading the mesh into FeniCS 
     mesh = Mesh()
