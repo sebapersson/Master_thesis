@@ -21,14 +21,15 @@ cbPalette <- c(
 #   plot_result, if true the result is plotted 
 #   n_cores, the number of cores to use when doing the grid matching
 #   is_circle, true if the geometry is a circle 
-plot_t_end_data <- function(path_data, path_save, limit_grid, plot_result=T, n_cores=3, is_circle=F, h=0.04, seed=123)
+plot_t_end_data <- function(path_data, path_save, limit_grid, plot_result=T, n_cores=3, 
+                            is_circle=F, h=0.04, seed=123)
 {
   set.seed(seed)
   
   # Read the data and aggregate, only check u1 
-  data <- read_csv(path_data, col_types = cols()) %>% 
-    select(-X1) %>%
-    filter(id_mol == 1)
+  data <- read_csv(path_data, col_types = cols()) %>%
+    select(-X1)
+  data <- data[seq(from=1, to = length(data$x), by = 2), ]
 
   # Make a grid 
   x1s <- seq(-limit_grid, limit_grid, by = h)
@@ -41,7 +42,7 @@ plot_t_end_data <- function(path_data, path_save, limit_grid, plot_result=T, n_c
   
   data_to_plot <- tibble(x = X_pred$Var1, 
                          y = X_pred$Var2, 
-                         u1 = u_grid)
+                         u = u_grid)
   
   
   # If circle set outside region to zero 
@@ -50,7 +51,7 @@ plot_t_end_data <- function(path_data, path_save, limit_grid, plot_result=T, n_c
   }
   
   # Viridis will be used for plotting the result 
-  p1 <- ggplot(data_to_plot, aes(x, y, fill = u1)) + 
+  p1 <- ggplot(data_to_plot, aes(x, y, fill = u)) + 
     geom_raster(interpolate = T) + 
     scale_fill_viridis_c() + 
     labs(x = "x", y = "y") + 
@@ -102,7 +103,7 @@ plot_max_conc_data <- function(file_list, geometry, path_save, plot_data=T)
   p1 <- ggplot(data_tot_rec, aes(time, med, color = n_holes, fill = n_holes, linetype = n_holes)) + 
     geom_line(size = 1.2) + 
     geom_ribbon(aes(ymin = quant_low, ymax = quant_high), color = NA, alpha = 0.2) + 
-    labs(x = "Time", y = "Maximum concentration") + 
+    labs(x = "Time", y = "Maximum concentration of u") + 
     scale_color_manual(values = cbPalette[-1], name = "Number of holes") + 
     scale_fill_manual(values = cbPalette[-1], name = "Number of holes") + 
     scale_linetype_manual(values = c("solid", "dashed", "dotted"), name = "Number of holes") + 
@@ -140,7 +141,7 @@ find_number_of_holes <- function(file_path)
 # Returns:
 #   void 
 plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_cores=3, is_circle=F, 
-                                   circle_data=F, seed=123)
+                                   circle_data=F, seed=12345678)
 {
   
   set.seed(seed)
@@ -150,7 +151,7 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
     filter(id_mol == 1)
   
   # Using 5 to (else the plot will be to messy)
-  n_random_figs <- 5
+  n_random_figs <- 4
   n_exp <- length(unique(data$id))
   id_to_plot <- sample(1:n_exp, n_random_figs, replace = F)
   
@@ -171,21 +172,22 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
     # Plot the final results using viridis palette
     data_to_plot <- tibble(x = X_pred$Var1, 
                            y = X_pred$Var2, 
-                           u1 = u_grid)
+                           u = u_grid)
     
     # If circle fix zeros 
     if(is_circle){
       data_to_plot[data_to_plot$x^2 + data_to_plot$y^2 > 2.5^2, 3] <- 0
     }
     
-    p1 <- ggplot(data_to_plot, aes(x, y, fill = u1)) + 
+    p1 <- ggplot(data_to_plot, aes(x, y, fill = u)) + 
       geom_raster(interpolate = T) +
       scale_fill_viridis_c() + 
       labs(x = "x", y = "y") + 
       theme(panel.grid.major = element_blank(),
             panel.grid.minor = element_blank(),
             panel.border = element_blank(),
-            panel.background = element_blank()) 
+            panel.background = element_blank(), 
+            legend.position="bottom") 
     
     # If a circle should be drawn 
     if(is.data.frame(circle_data)) p1 <- p1 + ggforce::geom_circle(data = circle_data, 
@@ -198,8 +200,8 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
     return(p1)})
   
   # Plot the list and write to file   
-  p1 <- ggpubr::ggarrange(plotlist = plot_list, ncol = 5, nrow = 1, common.legend = T, legend = "bottom")
-  ggsave(path_save, plot=p1, height = 6, width = 12)
+  p1 <- ggpubr::ggarrange(plotlist = plot_list, ncol = 4, nrow = 1, common.legend = F)
+  ggsave(path_save, plot=p1, height = 5, width = 12)
   
 }
 
@@ -211,7 +213,7 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
 process_lc_data <- function(model, geom)
 {
   # Select the directories with lc in the name
-  path_files <- str_c("../../Intermediate/Schankenberg", "_files/", geom, "/")
+  path_files <- str_c("../../Intermediate/", model, "_files/", geom, "/")
   file_list <- list.files(path_files)[str_detect(list.files(path_files), "lc")]
   
   if(geom == "Rectangles"){
@@ -314,7 +316,7 @@ process_experiment <- function(model, geom_list, sign, save_tag, hole_list=c(0, 
   
 
 # Function that will process and plot an illustration case, where the pde in questions 
-# is solved in one dimension. 
+# is solved in one dimension.     
 # Args:
 #   path_data, the path to the data 
 #   path_save, the path to where the result is saved 
@@ -349,26 +351,39 @@ plot_illustration_case <- function(path_data, path_save, t_index)
         id_mol == 1 ~ conc - min_u1, 
         id_mol == 2 ~ conc - min_u2)) %>%
       mutate(id_mol = case_when(
-        id_mol == 1 ~ "A", 
-        id_mol == 2 ~ "I"))
+        id_mol == 1 ~ "u", 
+        id_mol == 2 ~ "v"))
     
     text_write = str_c("t = ", as.character(round(i, digits = 2)))
     
-    p1 <- ggplot(data_t, aes(x, conc_s, color = id_mol, linetype = id_mol)) +
-      geom_line(size = 1.1) + 
-      annotate("text", x = Inf, y = Inf, label = text_write, hjust = 1.4, vjust = 2) + 
-      scale_color_manual(values = cbPalette[-c(1)]) + 
-      my_theme + 
-      theme(axis.text.y = element_blank(), 
-            axis.ticks.y = element_blank(), 
-            axis.title.y.left = element_blank(), 
-            legend.title = element_blank(), 
-            legend.text = element_text(size = 12)) + 
-      ylim(0, max_u1_tot) 
+    if(i != 0){
+      p1 <- ggplot(data_t, aes(x, conc_s, color = id_mol, linetype = id_mol)) +
+        geom_line(size = 1.4) + 
+        annotate("text", x = Inf, y = Inf, label = text_write, hjust = 1.4, vjust = 2, size = 6) + 
+        scale_color_manual(values = cbPalette[-c(1)]) + 
+        my_theme + 
+        theme(axis.ticks.y = element_blank(), 
+              axis.title.y.left = element_blank(), 
+              axis.text.y = element_blank(), 
+              legend.title = element_blank(), 
+              legend.text = element_text(size = 16)) + 
+        ylim(0, max_u1_tot)
+    }else{
+      p1 <- ggplot(data_t, aes(x, conc_s, color = id_mol, linetype = id_mol)) +
+        geom_line(size = 1.4) + 
+        annotate("text", x = Inf, y = Inf, label = text_write, hjust = 1.4, vjust = 2, size = 6) + 
+        scale_color_manual(values = cbPalette[-c(1)]) + 
+        my_theme + 
+        theme(legend.title = element_blank(), 
+              legend.text = element_text(size = 16)) + 
+        labs(y = "Concentration") + 
+        ylim(0, max_u1_tot)
+    }
     return(p1)})
   
-  plot <- ggpubr::ggarrange(plotlist = plot_list, common.legend = T, ncol = 5, legend="bottom")
-  ggsave(path_save, plot, height = 6, width = 12)
+  plot <- ggpubr::ggarrange(plotlist = plot_list, common.legend = T, ncol = 5, legend="right", 
+                            label.y = "Concentration")
+  ggsave(path_save, plot, height = 4, width = 12)
 }
 
 
@@ -377,27 +392,32 @@ plot_illustration_case <- function(path_data, path_save, t_index)
 # ===============================================================================================
 # Process the lc-results,
 # TODO: Processing of lc-data is currently broken 
-#process_lc_data("Schankenberg", "Rectangles")
-#process_lc_data("Schankenberg", "Circles")
+process_lc_data("Schankenberg", "Rectangles")
+process_lc_data("Schankenberg", "Circles")
+process_lc_data("Gierer", "Rectangles")
+process_lc_data("Gierer", "Circles")
+
 
 # Process non-controlled disturbance case 
 geom_list <- c("Rectangles", "Circles")
 process_experiment(model="Schankenberg", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
-process_experiment(model="Gierer", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
+process_experiment(model="Gierer", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=2)
   
 # Process the case when the initial value is disturbed (at a specific region)
 geom_list <- c("Rectangles", "Circles")
 circle_data <- tibble(x = c(0, -0.15, 0.55), y = c(0, 0.5, 1.05), r = 0.25)
 sign_list <- c("h0_dr0D25x0y0_k$", "h5_dr0D25x-0D15y0D5_k$", "h20_dr0D25x0D55y1D05_k$")
 process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", 
-                   n_cores=3, draw_circle = circle_data)
+                   n_cores=2, draw_circle = circle_data)
 process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="d_rxy", 
-                   n_cores=3, draw_circle = circle_data)
+                   n_cores=2, draw_circle = circle_data)
 
 # Information on where to draw the holes for the following plots 
 hole_five <- tibble(x = 0, y = 0, r = 0.25)
+hole_seven <- tibble(x = 0, y = 0, r = 0.25)
 hole_twenty <- tibble(x = 0.75, y = 0.85, r = 0.25)
 hole_both <- hole_five %>% bind_rows(hole_twenty)
+hole_three <- hole_five %>% bind_rows(hole_seven) %>% bind_rows(hole_twenty)
 
 # Process when a subdomain has different parameters, note different models have diff param
 geom_list <- c("Rectangles", "Circles")
@@ -426,16 +446,16 @@ process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, sa
 sign_list <- c("h5_d_ka2D0b2D0ga20di50$")
 process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="test", 
                    n_cores=3, draw_circle = hole_five)
- 
+  
 
 # Process with very large activation and decreased break-down 
 geom_list <- geom_list <- c("Rectangles", "Circles")
-sign_list <- c("h5_d_ka2D5b0D2ga10di100_Kga5d800$")
+sign_list <- c("h5_d_ka2D5b0D2ga10di100$", "h7_d_ka2D5b0D2ga10di100$", "h20_d_ka2D5b0D2ga10di100$")
 process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="test", 
-                   n_cores=3, draw_circle = hole_five)
-sign_list <- c("h5_d_ka2D0b0D5ga20di50$")
+                   n_cores=3, draw_circle = hole_three)
+sign_list <- c("h5_d_ka2D0b0D5ga20di50$", "h7_d_ka2D0b0D5ga20di50$", "h20_d_ka2D0b0D5ga20di50$")
 process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="test", 
-                   n_cores=3, draw_circle = hole_five)
+                   n_cores=3, draw_circle = hole_three)
 
 
 # Process when both inital perturbation and parameters change 
@@ -443,7 +463,7 @@ geom_list <- geom_list <- c("Rectangles", "Circles")
 sign_list <- c("h5_dr0D25x0D0y0D0_ka0D3b2D0ga15di50$", "h20_dr0D25x0D75y0D85_ka0D3b2D0ga15di50$")
 process_experiment(model="Schankenberg", geom_list=geom_list, sign=sign_list, save_tag="test", 
                    n_cores=3, draw_circle = hole_both)
-sign_list <- c("h5_dr0D25x0D0y0D0_ka0D6b2D0ga20di50", "h20_dr0D25x0D75y0D85_ka0D6b2D0ga20di50")
+sign_list <- c("h5_dr0D25x0D0y0D0_ka0D6b2D0ga20di50", "h20_dr0D25x0D75y0D85_ka0D6b2D0ga20di50$")
 process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag="test", 
                    n_cores=3, draw_circle = hole_both)
 
