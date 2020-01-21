@@ -414,7 +414,7 @@ process_experiment(model="Gierer", geom_list=geom_list, sign=sign_list, save_tag
 
 # Information on where to draw the holes for the following plots 
 hole_five <- tibble(x = 0, y = 0, r = 0.25)
-hole_seven <- tibble(x = 0, y = 0, r = 0.25)
+hole_seven <- tibble(x = 0.70, y = -0.12, r = 0.25)
 hole_twenty <- tibble(x = 0.75, y = 0.85, r = 0.25)
 hole_both <- hole_five %>% bind_rows(hole_twenty)
 hole_three <- hole_five %>% bind_rows(hole_seven) %>% bind_rows(hole_twenty)
