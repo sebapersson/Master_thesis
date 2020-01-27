@@ -183,8 +183,6 @@ def fem_illustration(param, t_opt, dir_save, file_save, model="Schankenberg", x_
     data_to_save["id_mol"] = test
     data_to_save.to_csv(file_save)
     
-    plot(_u_1)
-    plt.show()
 
 # Schankenberg model, run illustration case 
 t_opt = t_opt_class(7.5, 1500)
