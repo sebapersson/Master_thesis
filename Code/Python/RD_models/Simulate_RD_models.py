@@ -974,7 +974,7 @@ def run_rd_sim(param, t_opt, model, geom, times_run, hole_list, ic_list=None, di
 #     par_diff_list, the different parameters (None by default)
 #     geom, the geometry (default circle)
 #     n_holes, the number of holes (default five)
-def sanity_check(param_list, t_opt_list, times_run, ic_par, tag, par_diff_list=None, geom="Circles", n_holes="Five_holes"):
+def sanity_check(param_list, t_opt_list, times_run, ic_par, tag, par_diff_list=None, geom="Rectangles", n_holes="Five_holes"):
     
     # Set the file-locations
     model_list = ["Schankenberg", "Gierer"]
