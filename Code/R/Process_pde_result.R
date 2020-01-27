@@ -67,6 +67,7 @@ plot_t_end_data <- function(path_data, path_save, limit_grid, plot_result=T, n_c
   if(plot_result == T) print(p1)
 }
 
+
 # Function that will check if dir-exists, if a directory doesn't exist a 
 # new directory will be created
 # Args:
@@ -102,12 +103,14 @@ plot_max_conc_data <- function(file_list, geometry, path_save, plot_data=T)
   
   p1 <- ggplot(data_tot_rec, aes(time, med, color = n_holes, fill = n_holes, linetype = n_holes)) + 
     geom_line(size = 1.2) + 
-    geom_ribbon(aes(ymin = quant_low, ymax = quant_high), color = NA, alpha = 0.2) + 
+    geom_ribbon(aes(ymin = quant_low, ymax = quant_high), color = NA, alpha = 0.4) + 
     labs(x = "Time", y = "Maximum concentration of u") + 
-    scale_color_manual(values = cbPalette[-1], name = "Number of holes") + 
-    scale_fill_manual(values = cbPalette[-1], name = "Number of holes") + 
+    scale_color_manual(values = cbPalette[c(2, 1, 4)], name = "Number of holes") + 
+    scale_fill_manual(values = cbPalette[c(2, 1, 4)], name = "Number of holes") + 
     scale_linetype_manual(values = c("solid", "dashed", "dotted"), name = "Number of holes") + 
-    my_theme
+    my_theme + 
+    theme(legend.text=element_text(size=15), legend.title=element_text(size=15))
+    
   
   ggsave(path_save, plot=p1, height = 6, width = 9)
   
@@ -129,7 +132,7 @@ find_number_of_holes <- function(file_path)
 
 
 # Function that will plot 10 randomly selected end-time profiles, this with the goal to charactersise 
-# what kind of patters are created when holes are inserted into the grid. 
+# what kind of patters are created when holes are inserted i  nto the grid. 
 # Args:
 #   path_data, the path to the end-concentration file 
 #   path_save, path to where the result will be saved 
@@ -151,7 +154,7 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
     filter(id_mol == 1)
   
   # Using 5 to (else the plot will be to messy)
-  n_random_figs <- 4
+  n_random_figs <- 1
   n_exp <- length(unique(data$id))
   id_to_plot <- sample(1:n_exp, n_random_figs, replace = F)
   
@@ -187,7 +190,8 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
             panel.grid.minor = element_blank(),
             panel.border = element_blank(),
             panel.background = element_blank(), 
-            legend.position="bottom") 
+            legend.position="bottom", 
+            legend.text = element_text(size=12), legend.title=element_text(size=12)) 
     
     # If a circle should be drawn 
     if(is.data.frame(circle_data)) p1 <- p1 + ggforce::geom_circle(data = circle_data, 
@@ -200,8 +204,8 @@ plot_several_end_times <- function(path_data, path_save, limit_grid, h=0.05, n_c
     return(p1)})
   
   # Plot the list and write to file   
-  p1 <- ggpubr::ggarrange(plotlist = plot_list, ncol = 4, nrow = 1, common.legend = F)
-  ggsave(path_save, plot=p1, height = 5, width = 12)
+  p1 <- ggpubr::ggarrange(plotlist = plot_list, ncol = 1, nrow = 1, common.legend = F)
+  ggsave(path_save, plot=p1, height = 6, width = 6.5)
   
 }
 
@@ -391,17 +395,15 @@ plot_illustration_case <- function(path_data, path_save, t_index)
 # Analyse the data 
 # ===============================================================================================
 # Process the lc-results,
-# TODO: Processing of lc-data is currently broken 
 process_lc_data("Schankenberg", "Rectangles")
 process_lc_data("Schankenberg", "Circles")
 process_lc_data("Gierer", "Rectangles")
 process_lc_data("Gierer", "Circles")
 
-
 # Process non-controlled disturbance case 
 geom_list <- c("Rectangles", "Circles")
 process_experiment(model="Schankenberg", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
-process_experiment(model="Gierer", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=2)
+process_experiment(model="Gierer", geom_list=geom_list,sign="_d_k$", save_tag="d_k", n_cores=3)
   
 # Process the case when the initial value is disturbed (at a specific region)
 geom_list <- c("Rectangles", "Circles")
