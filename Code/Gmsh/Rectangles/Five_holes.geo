@@ -1,4 +1,4 @@
-lc = 0.08;
+lc = 0.04;
 
 // Outer rectangle points 
 limitRec = 2.2;
@@ -95,6 +95,11 @@ Physical Surface(3) = {3};
 Physical Surface(4) = {4};
 Physical Surface(5) = {5};
 Physical Surface(6) = {6};
+
+// If the aim is plot pure holes in the mesh 
+//Hide {:}
+//Recursive Show { Surface{1}; }
+//Mesh.MeshOnlyVisible=1;
 
 
 

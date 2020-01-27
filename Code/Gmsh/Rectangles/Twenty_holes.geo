@@ -1,4 +1,4 @@
-lc = 0.08;
+lc = 0.04;
 
 // Outer rectangle points 
 limitRec = 2.2;

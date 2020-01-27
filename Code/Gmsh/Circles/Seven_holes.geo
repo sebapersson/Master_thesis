@@ -1,4 +1,4 @@
-lc = 0.05;
+lc = 0.04;
 
 R = 2.5;
 // Outer rectangle points 
